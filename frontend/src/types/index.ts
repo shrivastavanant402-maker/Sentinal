@@ -1,0 +1,90 @@
+export type AgentStatus = 'active' | 'paused' | 'halted' | 'quarantined';
+
+export interface Agent {
+  id: string;
+  name: string;
+  role: string;
+  status: AgentStatus;
+  trust_score: number;
+  public_key?: string | null;
+  capabilities: string[];
+  metadata: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type EventType =
+  | 'agent_registered'
+  | 'plan_declared'
+  | 'tool_call_request'
+  | 'tool_call_response'
+  | 'status_changed'
+  | 'alert_triggered'
+  | string;
+
+export interface EventDecision {
+  decision?: string;
+  allowed?: boolean;
+  action?: string;
+  risk_level?: 'low' | 'medium' | 'high' | 'critical' | string;
+  risk_score?: number;
+  reason?: string;
+  evaluated_by?: string;
+  [key: string]: any;
+}
+
+export interface EventLog {
+  id: string;
+  seq: number;
+  timestamp: string;
+  agent_id: string;
+  session_id?: string | null;
+  event_type: EventType;
+  action: string;
+  payload: Record<string, any>;
+  decision: EventDecision;
+  previous_hash: string;
+  content_hash: string;
+  event_hash: string;
+  agent_signature?: string | null;
+  core_signature?: string | null;
+  created_at: string;
+}
+
+export type AlertSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface Alert {
+  id: string;
+  agent_id?: string | null;
+  event_id?: string | null;
+  severity: AlertSeverity;
+  alert_type: string;
+  message: string;
+  details: Record<string, any>;
+  created_at: string;
+}
+
+export interface LedgerReport {
+  ok: boolean;
+  checked: number;
+  chain_valid: boolean;
+  errors: string[];
+}
+
+export interface HealthStatus {
+  status: string;
+  timestamp?: string;
+  version?: string;
+  database?: string;
+  [key: string]: any;
+}
+
+export interface DashboardMetrics {
+  totalAgents: number;
+  activeAgents: number;
+  quarantinedAgents: number;
+  totalEvents: number;
+  totalAlerts: number;
+  criticalAlerts: number;
+  blockedActions: number;
+}
