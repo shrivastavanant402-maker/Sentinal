@@ -9,7 +9,7 @@ import { EnforcementClient, ActionRequest } from '../src/client/enforcement';
 import { AegisMeshStatusBar } from '../src/ui/statusBar';
 import { DEFAULT_CONFIG, getConfig } from '../src/config';
 import { activate, deactivate } from '../src/extension';
-import { mockCommands, mockSubscriptions } from './mockVscode';
+import { mockCommands, mockSubscriptions, mockConfigValues } from './mockVscode';
 
 describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
   let mockServer: http.Server | undefined;
@@ -330,6 +330,7 @@ describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
 
   // ── 7. Command Execution: testAction ─────────────────────────────────────
   it('should execute aegismesh.testAction command successfully', async () => {
+    mockConfigValues.set('aegismesh.backendUrl', `http://127.0.0.1:${mockServerPort}`);
     const mockContext: any = {
       subscriptions: mockSubscriptions,
     };
