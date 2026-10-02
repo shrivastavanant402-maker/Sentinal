@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import logging
 from typing import Any, Dict, List, Optional
+from fastapi import HTTPException, status
 
 from backend.app.db.repository import BaseRepository, get_repository
 from backend.app.schemas.alert import AlertCreate, AlertResponse, AlertSeverity
@@ -77,9 +78,9 @@ class AnomalyDetector:
         if event.event_type != "enforcement":
             return False
         decision = event.decision or {}
-        status = str(decision.get("status") or decision.get("decision") or "").upper()
+        status_val = str(decision.get("status") or decision.get("decision") or "").upper()
         allowed = decision.get("allowed")
-        return status in ("BLOCK", "QUARANTINE") or allowed is False
+        return status_val in ("BLOCK", "QUARANTINE") or allowed is False
 
     async def detect_anomalies(
         self,
@@ -88,18 +89,29 @@ class AnomalyDetector:
     ) -> AnomalyDetectResponse:
         repo = self._get_repo()
 
-        # 1. Fetch all events and alerts
+        # 1. Validate agent if explicitly specified
+        if agent_id:
+            agent = await repo.get_agent(agent_id)
+            if not agent:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Agent '{agent_id}' not found",
+                )
+            agents_to_scan = [agent_id]
+        else:
+            all_agents = await repo.list_agents()
+            agents_to_scan = sorted([a.id for a in all_agents])
+
+        # 2. Fetch all events and alerts
         all_events = await repo.list_events(limit=10000, offset=0)
         existing_alerts = await repo.list_alerts(limit=1000)
 
-        # 2. Determine target agents to scan
-        if agent_id:
-            agents_to_scan = [agent_id]
-        else:
-            found_ids = {e.agent_id for e in all_events if e.agent_id}
-            agents_list = await repo.list_agents()
-            for a in agents_list:
-                found_ids.add(a.id)
+        # If scanning all agents, also include any agent_id appearing in events
+        if not agent_id:
+            found_ids = set(agents_to_scan)
+            for ev in all_events:
+                if ev.agent_id:
+                    found_ids.add(ev.agent_id)
             agents_to_scan = sorted(list(found_ids))
 
         # Group events by agent_id and sort chronologically
@@ -111,6 +123,7 @@ class AnomalyDetector:
 
         detected_list: List[DetectedAnomaly] = []
         new_alerts_count = 0
+        deduplicated_alerts_count = 0
 
         # Helper to check if an alert for this agent + anomaly_type + latest_event already exists
         def find_existing_alert(aid: str, alert_type: str, latest_ev_id: str) -> Optional[AlertResponse]:
@@ -138,16 +151,21 @@ class AnomalyDetector:
                 count = len(rule_a_match)
                 time_span = (to_utc(latest_ev.timestamp) - to_utc(rule_a_match[0].timestamp)).total_seconds()
                 existing = find_existing_alert(aid, "REPEATED_HIGH_RISK_ACTIVITY", latest_ev.id)
+                event_ids = [e.id for e in rule_a_match]
 
                 if existing:
+                    deduplicated_alerts_count += 1
                     detected_list.append(
                         DetectedAnomaly(
                             anomaly_type="REPEATED_HIGH_RISK_ACTIVITY",
                             agent_id=aid,
                             severity=AlertSeverity.HIGH,
+                            rule_name="Rule A - Repeated High-Risk Activity",
                             message=existing.message,
+                            explanation="Triggered when the same agent produces >= 3 high or critical risk events within 5 minutes.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_a_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=existing.id,
                             created_alert=False,
@@ -163,7 +181,8 @@ class AnomalyDetector:
                         "anomaly_rule": "Rule A - Repeated High-Risk Actions",
                         "event_count": count,
                         "time_span_seconds": time_span,
-                        "triggering_event_ids": [e.id for e in rule_a_match],
+                        "triggering_event_ids": event_ids,
+                        "supporting_event_ids": event_ids,
                         "latest_event_id": latest_ev.id,
                         "actions": [e.action for e in rule_a_match],
                         "risk_levels": [e.decision.get("risk_level") for e in rule_a_match],
@@ -185,9 +204,12 @@ class AnomalyDetector:
                             anomaly_type="REPEATED_HIGH_RISK_ACTIVITY",
                             agent_id=aid,
                             severity=AlertSeverity.HIGH,
+                            rule_name="Rule A - Repeated High-Risk Activity",
                             message=msg,
+                            explanation="Triggered when the same agent produces >= 3 high or critical risk events within 5 minutes.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_a_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=new_alert.id,
                             created_alert=True,
@@ -207,16 +229,21 @@ class AnomalyDetector:
                 count = len(rule_b_match)
                 time_span = (to_utc(latest_ev.timestamp) - to_utc(rule_b_match[0].timestamp)).total_seconds()
                 existing = find_existing_alert(aid, "REPEATED_POLICY_VIOLATIONS", latest_ev.id)
+                event_ids = [e.id for e in rule_b_match]
 
                 if existing:
+                    deduplicated_alerts_count += 1
                     detected_list.append(
                         DetectedAnomaly(
                             anomaly_type="REPEATED_POLICY_VIOLATIONS",
                             agent_id=aid,
                             severity=AlertSeverity.HIGH,
+                            rule_name="Rule B - Repeated Policy Violations",
                             message=existing.message,
+                            explanation="Triggered when the same agent incurs >= 3 blocked or quarantined enforcement violations within 5 minutes.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_b_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=existing.id,
                             created_alert=False,
@@ -232,7 +259,8 @@ class AnomalyDetector:
                         "anomaly_rule": "Rule B - Repeated Policy Violations",
                         "event_count": count,
                         "time_span_seconds": time_span,
-                        "triggering_event_ids": [e.id for e in rule_b_match],
+                        "triggering_event_ids": event_ids,
+                        "supporting_event_ids": event_ids,
                         "latest_event_id": latest_ev.id,
                         "actions": [e.action for e in rule_b_match],
                         "reasons": [e.decision.get("reason") for e in rule_b_match],
@@ -254,9 +282,12 @@ class AnomalyDetector:
                             anomaly_type="REPEATED_POLICY_VIOLATIONS",
                             agent_id=aid,
                             severity=AlertSeverity.HIGH,
+                            rule_name="Rule B - Repeated Policy Violations",
                             message=msg,
+                            explanation="Triggered when the same agent incurs >= 3 blocked or quarantined enforcement violations within 5 minutes.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_b_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=new_alert.id,
                             created_alert=True,
@@ -276,16 +307,21 @@ class AnomalyDetector:
                 count = len(rule_c_match)
                 time_span = (to_utc(latest_ev.timestamp) - to_utc(rule_c_match[0].timestamp)).total_seconds()
                 existing = find_existing_alert(aid, "ACTION_BURST_ANOMALY", latest_ev.id)
+                event_ids = [e.id for e in rule_c_match]
 
                 if existing:
+                    deduplicated_alerts_count += 1
                     detected_list.append(
                         DetectedAnomaly(
                             anomaly_type="ACTION_BURST_ANOMALY",
                             agent_id=aid,
                             severity=AlertSeverity.MEDIUM,
+                            rule_name="Rule C - Action Burst / Behavioral Spike",
                             message=existing.message,
+                            explanation="Triggered when an agent executes >= 10 actions within 1 minute, indicating runaway automated execution.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_c_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=existing.id,
                             created_alert=False,
@@ -301,7 +337,8 @@ class AnomalyDetector:
                         "anomaly_rule": "Rule C - Action Burst / Behavioral Spike",
                         "event_count": count,
                         "time_span_seconds": time_span,
-                        "triggering_event_ids": [e.id for e in rule_c_match],
+                        "triggering_event_ids": event_ids,
+                        "supporting_event_ids": event_ids,
                         "latest_event_id": latest_ev.id,
                         "actions": [e.action for e in rule_c_match],
                     }
@@ -322,9 +359,12 @@ class AnomalyDetector:
                             anomaly_type="ACTION_BURST_ANOMALY",
                             agent_id=aid,
                             severity=AlertSeverity.MEDIUM,
+                            rule_name="Rule C - Action Burst / Behavioral Spike",
                             message=msg,
+                            explanation="Triggered when an agent executes >= 10 actions within 1 minute, indicating runaway automated execution.",
                             event_count=count,
-                            triggering_event_ids=[e.id for e in rule_c_match],
+                            triggering_event_ids=event_ids,
+                            supporting_event_ids=event_ids,
                             latest_event_id=latest_ev.id,
                             alert_id=new_alert.id,
                             created_alert=True,
@@ -332,11 +372,21 @@ class AnomalyDetector:
                         )
                     )
 
+        relevant_event_ids = list(dict.fromkeys([eid for a in detected_list for eid in a.triggering_event_ids]))
+
         return AnomalyDetectResponse(
             scanned_agents=agents_to_scan,
             total_events_analyzed=len(all_events),
+            rules_evaluated=[
+                "Rule A: Repeated High-Risk Activity (>= 3 high/crit in 5m)",
+                "Rule B: Repeated Policy Violations (>= 3 block/quarantine in 5m)",
+                "Rule C: Action Burst / Behavioral Spike (>= 10 actions in 1m)",
+            ],
             anomalies_detected=len(detected_list),
+            alerts_created=new_alerts_count,
             new_alerts_created=new_alerts_count,
+            alerts_deduplicated=deduplicated_alerts_count,
+            relevant_event_ids=relevant_event_ids,
             anomalies=detected_list,
         )
 

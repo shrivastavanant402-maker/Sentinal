@@ -156,9 +156,12 @@ export interface DetectedAnomaly {
   anomaly_type: string;
   agent_id: string;
   severity: AlertSeverity;
+  rule_name?: string;
   message: string;
+  explanation?: string | null;
   event_count: number;
   triggering_event_ids: string[];
+  supporting_event_ids?: string[];
   latest_event_id: string;
   alert_id?: string | null;
   created_alert: boolean;
@@ -168,8 +171,12 @@ export interface DetectedAnomaly {
 export interface AnomalyDetectResponse {
   scanned_agents: string[];
   total_events_analyzed: number;
+  rules_evaluated?: string[];
   anomalies_detected: number;
+  alerts_created?: number;
   new_alerts_created: number;
+  alerts_deduplicated?: number;
+  relevant_event_ids?: string[];
   anomalies: DetectedAnomaly[];
 }
 

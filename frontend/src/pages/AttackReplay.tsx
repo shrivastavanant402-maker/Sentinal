@@ -179,15 +179,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
     }
   };
 
-  // Auto-select preferred security/enforcement event on initial load
+  // Auto-select preferred security/enforcement event on initial load, or when initialEventId changes
   useEffect(() => {
-    if (!selectedEventId && events.length > 0) {
+    if (initialEventId) {
+      loadReplay(initialEventId);
+    } else if (!selectedEventId && events.length > 0) {
       const preferred = events.find(e => e.event_type === 'enforcement') || events[0];
       if (preferred) {
         loadReplay(preferred.id);
       }
     }
-  }, [events, selectedEventId]);
+  }, [events, initialEventId]);
 
   return (
     <div className="attack-replay-page-flow">
