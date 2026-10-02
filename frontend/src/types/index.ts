@@ -93,24 +93,32 @@ export type AttackScenarioType = 'prompt_injection' | 'secret_exfiltration' | 'r
 
 export type AttackStatus = 'ready' | 'running' | 'completed' | 'failed';
 
-export interface AttackResult {
+export interface AttackSimulateRequest {
+  agent_id: string;
   scenario: AttackScenarioType;
-  target_agent_id: string;
-  status: AttackStatus;
-  event?: EventLog | null;
-  decision?: EventDecision | null;
-  alert?: Alert | null;
-  trust_change?: {
-    previous_score: number;
-    new_score: number;
-  } | null;
-  enforcement?: {
-    action: string;
-    decision: string;
-    agent_quarantined?: boolean;
-  } | null;
-  message?: string;
-  error?: string;
-  timestamp?: string;
 }
+
+export interface AttackSimulateResponse {
+  scenario: AttackScenarioType;
+  agent_id: string;
+  target_agent_id?: string | null;
+  status: string;
+  decision: string;
+  allowed: boolean;
+  reason: string;
+  risk_level: AlertSeverity;
+  enforcement_outcome: string;
+  action: string;
+  event_id?: string | null;
+  alert?: Alert | null;
+  details?: Record<string, any>;
+  trust_delta?: number | null;
+  message: string;
+  timestamp: string;
+}
+
+export interface AttackResult extends AttackSimulateResponse {
+  error?: string | null;
+}
+
 

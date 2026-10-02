@@ -1,4 +1,13 @@
-import { Agent, AgentStatus, EventLog, Alert, LedgerReport, HealthStatus } from '../types';
+import {
+  Agent,
+  AgentStatus,
+  EventLog,
+  Alert,
+  LedgerReport,
+  HealthStatus,
+  AttackSimulateRequest,
+  AttackSimulateResponse,
+} from '../types';
 
 const API_BASE = '';
 
@@ -77,3 +86,13 @@ export async function verifyLedger(): Promise<LedgerReport> {
   const res = await fetch(`${API_BASE}/ledger/verify`);
   return handleResponse<LedgerReport>(res, 'Ledger verification failed');
 }
+
+export async function simulateAttack(request: AttackSimulateRequest): Promise<AttackSimulateResponse> {
+  const res = await fetch(`${API_BASE}/attacks/simulate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  });
+  return handleResponse<AttackSimulateResponse>(res, 'Attack simulation failed');
+}
+

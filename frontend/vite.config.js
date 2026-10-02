@@ -12,6 +12,7 @@ export default defineConfig({
       '/events': 'http://localhost:8000',
       '/ledger': 'http://localhost:8000',
       '/alerts': 'http://localhost:8000',
+      '/attacks': 'http://localhost:8000',
       '/api': 'http://localhost:8000',
     },
   },
