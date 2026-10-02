@@ -77,6 +77,21 @@
     * No arbitrary IDE terminal/file interception yet.
     * IDE package/extension integration is deferred to a later checkpoint.
 
+- [Developer 2] Completed MCP Checkpoint 2: Mission Coordinator MCP Bridge (2026-10-02)
+  - Implemented `aegismesh_run_mission` MCP tool in `backend/app/mcp/server.py` exposing multi-agent mission execution to external MCP clients (Cursor, Claude Desktop, VS Code).
+  - Bridge delegates directly to existing `MissionCoordinator.run_mission` without orchestrator duplication or second policy engine: PlannerAgent (`task.delegate`) -> ResearcherAgent (`web.search`) -> ExecutorAgent (`report.generate`).
+  - Preserved fail-closed security invariants: every action evaluates through AegisMesh PEP (`POST /enforce` / `execute_enforcement`), halting immediately on BLOCK or QUARANTINE decisions and preventing downstream execution.
+  - Returned clean, typed MCP response with `mission_id`, `session_id`, `goal`, `status` (`COMPLETED`, `BLOCKED`, `QUARANTINED`, `FAILED`), agent outputs (`planner_result`, `researcher_result`, `executor_result`), ordered `execution_trace`, and captured `event_ids`.
+  - Added dedicated test suite `backend/tests/test_mcp_mission.py` with 7 comprehensive tests: tool discovery, normal mission completion, planner blocked, researcher blocked, executor blocked, quarantined agent isolation, and cryptographic ledger hash-chain integrity with no bypass.
+  - Full regression verified: 204/204 backend tests passing (100%), 16/16 VS Code extension tests passing, frontend typecheck (`tsc --noEmit`) and production build (`vite build`) passing with 0 errors.
+  - Validated live local MCP invocation against active daemon on port 8000: full mission executed through Planner, Researcher, and Executor, capturing 3 real event IDs verified in `/events` and passing `/ledger/verify` with valid hash-chain.
+  - Updated frontend `frontend/src/pages/IDEIntegration.tsx` to document `aegismesh_run_mission` parameters and workflow.
+  - Limitations:
+    * MCP now exposes both `aegismesh_enforce` and `aegismesh_run_mission`.
+    * VS Code integration is NOT completed yet.
+    * Arbitrary IDE terminal/file interception is NOT completed.
+    * Package/extension integration is NOT completed.
+
 ## In Progress
 
 ## Next

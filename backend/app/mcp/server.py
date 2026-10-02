@@ -131,6 +131,98 @@ def create_mcp_server(
                 "details": {"error": str(exc)},
             }
 
+    @server.tool(
+        name="aegismesh_run_mission",
+        description=(
+            "Coordinates and executes an autonomous multi-agent mission across "
+            "Planner -> Researcher -> Executor under strict AegisMesh runtime PEP enforcement. "
+            "Every agent action (task delegation, web research, artifact generation) is verified "
+            "against active mission contracts, provenance, and security policy rules, logging "
+            "cryptographic ledger proof for every step."
+        ),
+    )
+    async def aegismesh_run_mission(
+        goal: str,
+        mission_id: Optional[str] = None,
+        session_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Executes a real multi-agent mission using AegisMesh MissionCoordinator.
+        """
+        logger.info(
+            "MCP aegismesh_run_mission request: goal=%s mission_id=%s session_id=%s",
+            goal,
+            mission_id,
+            session_id,
+        )
+
+        # ── 1. If configured for in-process or forced offline, call MissionCoordinator directly
+        if in_process or os.getenv("AEGISMESH_USE_IN_PROCESS", "0") == "1":
+            from backend.app.main import app
+            from backend.app.api.missions import ensure_foundational_agents
+            from agents.orchestrator.runner import MissionCoordinator
+            from agents.common.client import AegisMeshClient
+
+            await ensure_foundational_agents()
+            client = AegisMeshClient(app=app)
+            coordinator = MissionCoordinator(client=client)
+            result = await coordinator.run_mission(
+                goal=goal,
+                mission_id=mission_id,
+                session_id=session_id,
+                raise_on_failure=False,
+            )
+            return _format_mission_result(result)
+
+        # ── 2. Otherwise communicate via HTTP with running AegisMesh Core backend
+        try:
+            async with httpx.AsyncClient(timeout=60.0) as http_client:
+                url = f"{resolved_backend_url.rstrip('/')}/missions/run"
+                payload: Dict[str, Any] = {"goal": goal}
+                if mission_id:
+                    payload["mission_id"] = mission_id
+                if session_id:
+                    payload["session_id"] = session_id
+
+                resp = await http_client.post(url, json=payload)
+                resp.raise_for_status()
+                return resp.json()
+        except httpx.ConnectError:
+            logger.warning(
+                "AegisMesh backend at %s not reachable; executing mission in-process.",
+                resolved_backend_url,
+            )
+            from backend.app.main import app
+            from backend.app.api.missions import ensure_foundational_agents
+            from agents.orchestrator.runner import MissionCoordinator
+            from agents.common.client import AegisMeshClient
+
+            await ensure_foundational_agents()
+            client = AegisMeshClient(app=app)
+            coordinator = MissionCoordinator(client=client)
+            result = await coordinator.run_mission(
+                goal=goal,
+                mission_id=mission_id,
+                session_id=session_id,
+                raise_on_failure=False,
+            )
+            return _format_mission_result(result)
+        except Exception as exc:
+            logger.error("Mission execution failed (fail-closed): %s", exc)
+            return {
+                "mission_id": mission_id or "mission-failed",
+                "session_id": session_id or "session-failed",
+                "goal": goal,
+                "status": "FAILED",
+                "planner_result": None,
+                "researcher_result": None,
+                "executor_result": None,
+                "execution_trace": [],
+                "event_ids": [],
+                "error": str(exc),
+                "error_details": {"exception": type(exc).__name__, "details": str(exc)},
+            }
+
     return server
 
 
@@ -146,6 +238,13 @@ def _format_decision(decision: DecisionResponse) -> Dict[str, Any]:
         "event_id": decision.event_id,
         "details": decision.details or {},
     }
+
+
+def _format_mission_result(result: Any) -> Dict[str, Any]:
+    """Helper to convert typed MissionResult into dictionary output."""
+    if hasattr(result, "model_dump"):
+        return result.model_dump()
+    return dict(result)
 
 
 def run_server(transport: str = "stdio", backend_url: Optional[str] = None):

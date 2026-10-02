@@ -194,19 +194,44 @@ export const IDEIntegration: React.FC<IDEIntegrationProps> = ({ go }) => {
               fontFamily: 'monospace',
               fontSize: '12px',
               color: 'var(--text)',
-              marginBottom: '14px',
+              marginBottom: '12px',
             }}
           >
             <div style={{ color: 'var(--accent-text)', fontWeight: 600, marginBottom: '4px' }}>
               tool: aegismesh_enforce
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '8px' }}>
-              Enforces AegisMesh runtime policy and records cryptographic ledger evidence before tool execution.
+              Enforces runtime policy and records cryptographic ledger evidence before executing an individual tool action.
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
               <div><strong>agent_id:</strong> string (e.g. &quot;researcher-01&quot;)</div>
               <div><strong>action:</strong> string (e.g. &quot;web.search&quot;, &quot;shell.exec&quot;)</div>
-              <div><strong>payload:</strong> object (parameters, optional)</div>
+              <div><strong>payload:</strong> object (optional)</div>
+              <div><strong>mission_id:</strong> string (optional)</div>
+              <div><strong>session_id:</strong> string (optional)</div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              background: 'var(--surface-inset)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius)',
+              padding: '12px',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              color: 'var(--text)',
+              marginBottom: '14px',
+            }}
+          >
+            <div style={{ color: 'var(--accent-text)', fontWeight: 600, marginBottom: '4px' }}>
+              tool: aegismesh_run_mission
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-3)', marginBottom: '8px' }}>
+              Executes a full multi-agent mission across Planner → Researcher → Executor. Every step is guarded by PEP enforcement.
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--text-2)' }}>
+              <div><strong>goal:</strong> string (e.g. &quot;Research a topic and generate a report.&quot;)</div>
               <div><strong>mission_id:</strong> string (optional)</div>
               <div><strong>session_id:</strong> string (optional)</div>
             </div>
@@ -215,10 +240,10 @@ export const IDEIntegration: React.FC<IDEIntegrationProps> = ({ go }) => {
           <div style={{ fontSize: '12px', color: 'var(--text-2)', lineHeight: 1.6 }}>
             <div style={{ fontWeight: 600, color: 'var(--text)', marginBottom: '6px' }}>Enforcement Outcomes:</div>
             <ul style={{ margin: 0, paddingLeft: '18px' }}>
-              <li><strong style={{ color: 'var(--success-text)' }}>ALLOW:</strong> Action adheres to active mission contract.</li>
-              <li><strong style={{ color: 'var(--critical-text)' }}>BLOCK:</strong> Unauthorized command, invalid identity, or policy violation.</li>
+              <li><strong style={{ color: 'var(--success-text)' }}>ALLOW / COMPLETED:</strong> Mission/action adheres to active mission contracts.</li>
+              <li><strong style={{ color: 'var(--critical-text)' }}>BLOCK / BLOCKED:</strong> Unauthorized action, mission halts immediately.</li>
               <li><strong style={{ color: 'var(--warning-text)' }}>APPROVAL:</strong> High-risk action requiring administrator review.</li>
-              <li><strong style={{ color: 'var(--critical-text)' }}>QUARANTINE:</strong> Agent isolated due to critical compromise or drift.</li>
+              <li><strong style={{ color: 'var(--critical-text)' }}>QUARANTINE:</strong> Agent isolated due to compromise or critical drift.</li>
             </ul>
           </div>
         </div>
