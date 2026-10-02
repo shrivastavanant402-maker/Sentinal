@@ -21,6 +21,11 @@
 - [Developer 1] Created backend/app/security/ package with Protocol interfaces (PolicyEvaluator, TrustEvaluator, ProvenanceEvaluator, MissionContractEvaluator, IdentityVerifier) (2026-10-02)
 - [Developer 1] Created security exception hierarchy (SecurityError, ActionDenied, AgentQuarantined, ApprovalRequired, InvalidAgentIdentity) (2026-10-02)
 - [Developer 1] Added test_decision_schemas.py and test_ledger_decision.py (18 tests total, all passing) (2026-10-02)
+- [Developer 1] Implemented PolicyDecisionPoint in backend/app/pdp/engine.py with deterministic decision pipeline (2026-10-02)
+- [Developer 1] Created POST /enforce endpoint in backend/app/api/enforcement.py — security gate with ledger recording (2026-10-02)
+- [Developer 1] Added EventType.ENFORCEMENT to event schema; enforcement decisions written as tamper-proof ledger events (2026-10-02)
+- [Developer 1] Created backend/tests/test_pep.py with 11 PEP tests (unknown=BLOCK, quarantined=QUARANTINE, high-risk=BLOCK, safe=ALLOW, ledger verification, schema check, hash divergence) (2026-10-02)
+- All 29 backend tests passing (2026-10-02)
 
 ## In Progress
 
