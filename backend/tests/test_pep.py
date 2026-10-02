@@ -124,8 +124,8 @@ async def test_high_risk_action_is_blocked():
     assert body["allowed"] is False
     # Phase 2: drift detector runs before risk classifier — MISSION_DRIFT is now
     # the primary reason when the action is in forbidden_tools; HIGH_RISK_ACTION
-    # is the Phase 1 reason. Both are correct block decisions.
-    assert body["reason"] in ("HIGH_RISK_ACTION", "MISSION_DRIFT", "CONTRACT_VIOLATION")
+    # is the Phase 1 reason; TAINT_SENSITIVE_LEAK is the taint sink reason.
+    assert body["reason"] in ("HIGH_RISK_ACTION", "MISSION_DRIFT", "CONTRACT_VIOLATION", "TAINT_SENSITIVE_LEAK")
     assert body["risk_level"] in ("high", "critical")
 
 

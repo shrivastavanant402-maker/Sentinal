@@ -48,7 +48,11 @@
 - [Developer 1] Integrated all 4 Phase 2 modules into PolicyDecisionPoint (10-stage pipeline: identity → quarantine → taint → drift → contract → policy → trust → auto-quarantine) (2026-10-02)
 - [Developer 1] Added REST API: GET/POST /trust, GET/POST /quarantine, GET /provenance/taint-hits (2026-10-02)
 - [Developer 1] Created backend/tests/test_phase2_security.py with 28 tests (trust: 8, provenance: 7, drift: 7, quarantine: 3, PDP integration: 3) (2026-10-02)
-- All 89 backend tests passing with 100% pass rate (2026-10-02)
+- [Developer 2] Implemented backend Attack Lab simulation endpoint (POST /attacks/simulate) integrating Person 1's PEP, contracts, risk engine, and ledger (2026-10-02)
+- [Developer 2] Factored out execute_enforcement service in backend/app/api/enforcement.py for clean Python service reuse without PEP duplication (2026-10-02)
+- [Developer 2] Implemented attack alert generation linked to ledger event for BLOCK and QUARANTINE decisions (2026-10-02)
+- [Developer 2] Created test_attacks_api.py with 8 comprehensive unit and integration tests covering all scenarios, alert linkage, and ledger integrity (2026-10-02)
+- All 97 backend tests passing with 100% pass rate (2026-10-02)
 
 ## In Progress
 

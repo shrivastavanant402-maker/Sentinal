@@ -13,25 +13,11 @@ logger = logging.getLogger("aegismesh.api.enforcement")
 router = APIRouter(prefix="/enforce", tags=["Enforcement"])
 
 
-@router.post("", response_model=DecisionResponse)
-async def enforce_action(request: ActionRequest) -> DecisionResponse:
+async def execute_enforcement(request: ActionRequest) -> DecisionResponse:
     """
-    Policy Enforcement Point — synchronous security gate.
-
-    Agents MUST call this endpoint BEFORE executing any action.
-
-    The endpoint:
-      1. Looks up the agent record (unknown agent → BLOCK).
-      2. Delegates to the PDP engine for a security decision.
-      3. Records the enforcement decision as a tamper-proof ledger event.
-      4. Returns the DecisionResponse.
-
-    This endpoint does NOT execute the requested action.
-    The caller (agent) is responsible for honouring the decision.
-
-    HTTP 200 is always returned for a valid evaluation.
-    The caller must inspect ``allowed`` / ``decision`` in the response body.
-    HTTP 422 is returned only for a malformed/unparseable request body.
+    Core Policy Enforcement Point evaluation logic.
+    Looks up agent, evaluates through PDP, records tamper-proof ledger event,
+    and returns strongly typed DecisionResponse.
     """
     repo = get_repository()
     pdp = get_pdp()
@@ -89,3 +75,26 @@ async def enforce_action(request: ActionRequest) -> DecisionResponse:
     )
 
     return decision
+
+
+@router.post("", response_model=DecisionResponse)
+async def enforce_action(request: ActionRequest) -> DecisionResponse:
+    """
+    Policy Enforcement Point — synchronous security gate.
+
+    Agents MUST call this endpoint BEFORE executing any action.
+
+    The endpoint:
+      1. Looks up the agent record (unknown agent → BLOCK).
+      2. Delegates to the PDP engine for a security decision.
+      3. Records the enforcement decision as a tamper-proof ledger event.
+      4. Returns the DecisionResponse.
+
+    This endpoint does NOT execute the requested action.
+    The caller (agent) is responsible for honouring the decision.
+
+    HTTP 200 is always returned for a valid evaluation.
+    The caller must inspect ``allowed`` / ``decision`` in the response body.
+    HTTP 422 is returned only for a malformed/unparseable request body.
+    """
+    return await execute_enforcement(request)
