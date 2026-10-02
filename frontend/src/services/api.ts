@@ -8,6 +8,8 @@ import {
   AttackSimulateRequest,
   AttackSimulateResponse,
   AttackReplayResponse,
+  AnomalyDetectRequest,
+  AnomalyDetectResponse,
 } from '../types';
 
 const API_BASE = '';
@@ -100,5 +102,14 @@ export async function simulateAttack(request: AttackSimulateRequest): Promise<At
 export async function fetchAttackReplay(eventId: string): Promise<AttackReplayResponse> {
   const res = await fetch(`${API_BASE}/attacks/replay/${encodeURIComponent(eventId)}`);
   return handleResponse<AttackReplayResponse>(res, `Failed to fetch attack replay for event ${eventId}`);
+}
+
+export async function detectAnomalies(request?: AnomalyDetectRequest): Promise<AnomalyDetectResponse> {
+  const res = await fetch(`${API_BASE}/anomalies/detect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request || {}),
+  });
+  return handleResponse<AnomalyDetectResponse>(res, 'Anomaly detection scan failed');
 }
 

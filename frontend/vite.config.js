@@ -22,6 +22,7 @@ export default defineConfig({
       '/ledger': apiProxyConfig,
       '/alerts': apiProxyConfig,
       '/attacks': apiProxyConfig,
+      '/anomalies': apiProxyConfig,
       '/api': apiProxyConfig,
     },
   },

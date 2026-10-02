@@ -13,6 +13,7 @@ from backend.app.api.enforcement import router as enforcement_router
 from backend.app.api.contracts import router as contracts_router
 from backend.app.api.trust import router as trust_router
 from backend.app.api.attacks import router as attacks_router
+from backend.app.api.anomalies import router as anomalies_router
 from backend.app.db.repository import get_repository
 from backend.app.db.repositories.contracts import get_contract_repository, get_default_seed_contracts
 from backend.app.schemas.agent import AgentCreate
@@ -124,6 +125,7 @@ def create_app() -> FastAPI:
     app.include_router(contracts_router)
     app.include_router(trust_router)
     app.include_router(attacks_router)
+    app.include_router(anomalies_router)
 
     # Also mount under /api/v1 for standard API versioning
     app.include_router(health_router, prefix="/api/v1")
@@ -135,6 +137,7 @@ def create_app() -> FastAPI:
     app.include_router(contracts_router, prefix="/api/v1")
     app.include_router(trust_router, prefix="/api/v1")
     app.include_router(attacks_router, prefix="/api/v1")
+    app.include_router(anomalies_router, prefix="/api/v1")
 
     return app
 

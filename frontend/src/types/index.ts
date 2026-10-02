@@ -147,4 +147,30 @@ export interface AttackReplayResponse {
   ledger: AttackReplayLedgerInfo;
 }
 
+export interface AnomalyDetectRequest {
+  agent_id?: string | null;
+  window_seconds?: number;
+}
+
+export interface DetectedAnomaly {
+  anomaly_type: string;
+  agent_id: string;
+  severity: AlertSeverity;
+  message: string;
+  event_count: number;
+  triggering_event_ids: string[];
+  latest_event_id: string;
+  alert_id?: string | null;
+  created_alert: boolean;
+  timestamp: string;
+}
+
+export interface AnomalyDetectResponse {
+  scanned_agents: string[];
+  total_events_analyzed: number;
+  anomalies_detected: number;
+  new_alerts_created: number;
+  anomalies: DetectedAnomaly[];
+}
+
 

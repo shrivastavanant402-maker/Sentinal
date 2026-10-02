@@ -3,7 +3,8 @@ import { Alert, Agent } from '../types';
 import { AlertFilters } from '../components/alerts/AlertFilters';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertDetailModal } from '../components/alerts/AlertDetailModal';
-import { ShieldAlert, RefreshCw } from 'lucide-react';
+import { detectAnomalies } from '../services/api';
+import { ShieldAlert, RefreshCw, Radar, CheckCircle2 } from 'lucide-react';
 
 interface AlertsPageProps {
   alerts: Alert[];
@@ -27,6 +28,30 @@ export const Alerts: React.FC<AlertsPageProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState('ALL');
   const [selectedAgent, setSelectedAgent] = useState('ALL');
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanResult, setScanResult] = useState<{ message: string; count: number } | null>(null);
+
+  const handleRunAnomalyScan = async () => {
+    setIsScanning(true);
+    setScanResult(null);
+    try {
+      const resp = await detectAnomalies();
+      setScanResult({
+        message: `Anomaly detection complete: analyzed ${resp.total_events_analyzed} events, detected ${resp.anomalies_detected} anomalies (${resp.new_alerts_created} new alerts created).`,
+        count: resp.new_alerts_created,
+      });
+      if (resp.new_alerts_created > 0) {
+        onRefresh();
+      }
+    } catch (err: any) {
+      setScanResult({
+        message: `Anomaly scan failed: ${err.message}`,
+        count: 0,
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
 
   // Compute severity counts for filter tabs
   const severityCounts = useMemo(() => {
@@ -100,6 +125,16 @@ export const Alerts: React.FC<AlertsPageProps> = ({
 
         <div className="flex items-center gap-3">
           <button
+            onClick={handleRunAnomalyScan}
+            disabled={isLoading || isScanning}
+            className="btn btn-primary btn-sm flex items-center gap-1.5 font-mono text-xs"
+            title="Scan runtime event stream for suspicious behavioral anomalies"
+          >
+            <Radar size={13} className={isScanning ? 'animate-spin' : ''} />
+            <span>{isScanning ? 'Scanning...' : 'Detect Anomalies'}</span>
+          </button>
+
+          <button
             onClick={onRefresh}
             disabled={isLoading}
             className="btn btn-secondary btn-sm"
@@ -109,6 +144,22 @@ export const Alerts: React.FC<AlertsPageProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Anomaly Scan Result Notification */}
+      {scanResult && (
+        <div className="p-3 rounded-lg border border-cyan/30 bg-cyan/10 text-xs font-mono text-cyan flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <CheckCircle2 size={14} className="text-cyan" />
+            {scanResult.message}
+          </span>
+          <button
+            onClick={() => setScanResult(null)}
+            className="text-muted hover:text-white text-xs ml-3"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Filter and search bar */}
       <AlertFilters
