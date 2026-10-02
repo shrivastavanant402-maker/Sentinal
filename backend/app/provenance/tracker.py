@@ -74,6 +74,22 @@ class TaintLabel(str, Enum):
     TAINTED = "TAINTED"           # propagated taint (second-order)
 
 
+_TAINT_RANK: Dict[TaintLabel, int] = {
+    TaintLabel.CLEAN: 0,
+    TaintLabel.UNTRUSTED: 1,
+    TaintLabel.TAINTED: 2,
+    TaintLabel.SENSITIVE: 3,
+}
+
+_UNTRUSTED_SOURCE_TOOLS: Set[str] = {
+    "web.search",
+    "web.read",
+    "external.get",
+    "user.input",
+    "http.get",
+}
+
+
 @dataclass
 class TaintRecord:
     """
@@ -117,17 +133,19 @@ class ProvenanceTracker:
     Tracks data provenance and taint propagation across agent boundaries.
 
     Core operations:
-      mark_tainted(agent_id, source_tool, payload)
-          → labels data read by an agent as SENSITIVE
+      mark_tainted(agent_id, source_tool, payload, label)
+          → labels data read by an agent as SENSITIVE or UNTRUSTED
       check_sink(agent_id, sink_tool, payload, provenance_meta)
           → detects if tainted data is being routed to a forbidden sink
-      propagate(from_agent, to_agent)
-          → copies taint from sender to receiver
+      propagate(from_agent, to_agent, action)
+          → copies taint and accumulates lineage from sender to receiver
     """
 
     def __init__(self) -> None:
         # agent_id → current TaintLabel
         self._agent_taint: Dict[str, TaintLabel] = {}
+        # agent_id → lineage info {"source_tool", "source_agent", "path", "label"}
+        self._agent_lineage: Dict[str, Dict[str, Any]] = {}
         # list of all taint records (audit trail)
         self._records: List[TaintRecord] = []
         self._lock = asyncio.Lock()
@@ -145,13 +163,20 @@ class ProvenanceTracker:
     ) -> TaintRecord:
         """
         Mark an agent as carrying tainted data originating from source_tool.
-        Called when an ALLOW decision is returned for a sensitive source tool.
+        Called when an ALLOW decision is returned for a sensitive source tool,
+        or when sensitive/untrusted data is ingested.
         """
         async with self._lock:
             prev = self._agent_taint.get(agent_id, TaintLabel.CLEAN)
-            # Escalate if already tainted
-            if label.value > prev.value or prev == TaintLabel.CLEAN:
+            # Escalate if new label has higher severity rank or agent was CLEAN
+            if _TAINT_RANK.get(label, 0) > _TAINT_RANK.get(prev, 0) or prev == TaintLabel.CLEAN:
                 self._agent_taint[agent_id] = label
+                self._agent_lineage[agent_id] = {
+                    "source_tool": source_tool,
+                    "source_agent": agent_id,
+                    "path": [agent_id],
+                    "label": label,
+                }
 
             record = TaintRecord(
                 label=label,
@@ -167,6 +192,20 @@ class ProvenanceTracker:
                 label.value,
             )
             return record
+
+    async def mark_untrusted(
+        self,
+        agent_id: str,
+        source_tool: str,
+        payload: Optional[Dict[str, Any]] = None,
+    ) -> TaintRecord:
+        """Mark an agent as carrying UNTRUSTED data (e.g. from public web/external source)."""
+        return await self.mark_tainted(
+            agent_id=agent_id,
+            source_tool=source_tool,
+            payload=payload,
+            label=TaintLabel.UNTRUSTED,
+        )
 
     # ------------------------------------------------------------------
     # Check if taint will hit a sensitive sink
@@ -186,18 +225,37 @@ class ProvenanceTracker:
         async with self._lock:
             current_label = self._agent_taint.get(agent_id, TaintLabel.CLEAN)
 
-            # Check payload / provenance for taint signals from caller
+            # Check caller-provided provenance metadata for taint signals
             if provenance_meta:
-                declared_label = provenance_meta.get("taint_label", "")
-                if declared_label in (TaintLabel.SENSITIVE.value, TaintLabel.TAINTED.value):
-                    current_label = TaintLabel.TAINTED
-                    self._agent_taint[agent_id] = current_label
+                declared_str = provenance_meta.get("taint_label", "")
+                try:
+                    declared_label = TaintLabel(declared_str)
+                    if _TAINT_RANK.get(declared_label, 0) > _TAINT_RANK.get(current_label, 0):
+                        current_label = declared_label
+                        self._agent_taint[agent_id] = current_label
+                        source_agent = provenance_meta.get("source_agent", agent_id)
+                        source_tool = provenance_meta.get("source_tool", "external")
+                        raw_path = provenance_meta.get("propagation_path", [source_agent, agent_id])
+                        self._agent_lineage[agent_id] = {
+                            "source_tool": source_tool,
+                            "source_agent": source_agent,
+                            "path": raw_path,
+                            "label": declared_label,
+                        }
+                except ValueError:
+                    pass
 
             if current_label == TaintLabel.CLEAN:
-                # Also check payload keys for sensitive keywords (level-1 heuristic)
+                # Also check payload keys/values for sensitive keywords (Level-1 heuristic)
                 if payload and self._payload_has_sensitive_keywords(payload):
                     current_label = TaintLabel.UNTRUSTED
                     self._agent_taint[agent_id] = current_label
+                    self._agent_lineage[agent_id] = {
+                        "source_tool": "payload.content",
+                        "source_agent": agent_id,
+                        "path": [agent_id],
+                        "label": current_label,
+                    }
 
             if current_label == TaintLabel.CLEAN:
                 return TaintCheckResult(
@@ -207,28 +265,34 @@ class ProvenanceTracker:
                 )
 
             is_sink = sink_tool in SENSITIVE_SINKS
+            lineage = self._agent_lineage.get(agent_id, {})
+            source_agent = lineage.get("source_agent", agent_id)
+            source_tool = lineage.get("source_tool")
+            path = lineage.get("path", [agent_id])
 
             if is_sink:
                 record = TaintRecord(
                     label=current_label,
-                    source_agent=agent_id,
-                    propagation_path=self._get_propagation_path(agent_id),
+                    source_tool=source_tool,
+                    source_agent=source_agent,
+                    propagation_path=path,
                     sink_tool=sink_tool,
                     sink_agent=agent_id,
                     is_hit=True,
                 )
                 self._records.append(record)
                 logger.warning(
-                    "TAINT HIT: agent=%s sink=%s label=%s — CRITICAL sink reached with tainted data",
+                    "TAINT HIT: agent=%s sink=%s label=%s path=%s — CRITICAL sink reached with tainted data",
                     agent_id,
                     sink_tool,
                     current_label.value,
+                    path,
                 )
                 return TaintCheckResult(
                     is_tainted=True,
                     label=current_label,
                     record=record,
-                    reason=f"Tainted data ({current_label.value}) routed to sensitive sink '{sink_tool}'.",
+                    reason=f"Tainted data ({current_label.value}) routed to sensitive sink '{sink_tool}'. Path: {' -> '.join(path)}.",
                 )
 
             # Tainted but sink is not forbidden — warn but allow (policy decides)
@@ -243,23 +307,71 @@ class ProvenanceTracker:
     # Cross-agent taint propagation
     # ------------------------------------------------------------------
 
-    async def propagate(self, from_agent: str, to_agent: str) -> None:
+    async def propagate(
+        self,
+        from_agent: str,
+        to_agent: str,
+        action: str = "agent.message",
+    ) -> Optional[TaintRecord]:
         """
         Propagate taint label from one agent to another (cross-boundary).
-        Called when a tainted agent sends a message or delegates to another.
+        Preserves provenance lineage: source → agent → agent.
         """
         async with self._lock:
             source_label = self._agent_taint.get(from_agent, TaintLabel.CLEAN)
-            if source_label != TaintLabel.CLEAN:
-                dest_label = self._agent_taint.get(to_agent, TaintLabel.CLEAN)
-                if source_label.value >= dest_label.value:
-                    self._agent_taint[to_agent] = TaintLabel.TAINTED
-                    logger.info(
-                        "Taint PROPAGATE: %s → %s (label=%s → TAINTED)",
-                        from_agent,
-                        to_agent,
-                        source_label.value,
-                    )
+            if source_label == TaintLabel.CLEAN:
+                return None
+
+            dest_label = self._agent_taint.get(to_agent, TaintLabel.CLEAN)
+            target_label = (
+                TaintLabel.TAINTED
+                if source_label in (TaintLabel.SENSITIVE, TaintLabel.TAINTED)
+                else source_label
+            )
+
+            # Do not downgrade destination if it already has higher/equal taint
+            if _TAINT_RANK.get(target_label, 0) >= _TAINT_RANK.get(dest_label, 0):
+                self._agent_taint[to_agent] = target_label
+
+            from_lineage = self._agent_lineage.get(
+                from_agent,
+                {
+                    "source_tool": "unknown",
+                    "source_agent": from_agent,
+                    "path": [from_agent],
+                    "label": source_label,
+                },
+            )
+            new_path = list(from_lineage.get("path", [from_agent]))
+            if to_agent not in new_path:
+                new_path.append(to_agent)
+
+            self._agent_lineage[to_agent] = {
+                "source_tool": from_lineage.get("source_tool"),
+                "source_agent": from_lineage.get("source_agent", from_agent),
+                "path": new_path,
+                "label": target_label,
+            }
+
+            record = TaintRecord(
+                label=target_label,
+                source_tool=from_lineage.get("source_tool"),
+                source_agent=from_lineage.get("source_agent", from_agent),
+                propagation_path=new_path,
+                sink_tool=action,
+                sink_agent=to_agent,
+                is_hit=False,
+            )
+            self._records.append(record)
+            logger.info(
+                "Taint PROPAGATE: %s → %s (label=%s → %s, path=%s)",
+                from_agent,
+                to_agent,
+                source_label.value,
+                target_label.value,
+                new_path,
+            )
+            return record
 
     # ------------------------------------------------------------------
     # Source detection helpers
@@ -269,6 +381,11 @@ class ProvenanceTracker:
     def is_sensitive_source(tool: str) -> bool:
         """Returns True if the tool is known to produce sensitive data."""
         return tool in _SENSITIVE_SOURCE_TOOLS
+
+    @staticmethod
+    def is_untrusted_source(tool: str) -> bool:
+        """Returns True if the tool is known to ingest untrusted external data."""
+        return tool in _UNTRUSTED_SOURCE_TOOLS
 
     @staticmethod
     def _payload_has_sensitive_keywords(payload: Dict[str, Any]) -> bool:
@@ -282,6 +399,9 @@ class ProvenanceTracker:
 
     def _get_propagation_path(self, agent_id: str) -> List[str]:
         """Return the known propagation path for this agent from taint records."""
+        lineage = self._agent_lineage.get(agent_id)
+        if lineage and "path" in lineage:
+            return list(lineage["path"])
         for rec in reversed(self._records):
             if rec.source_agent == agent_id and not rec.is_hit:
                 return rec.propagation_path + [agent_id]
@@ -307,6 +427,7 @@ class ProvenanceTracker:
         """Clear taint for an agent (e.g., after quarantine + remediation)."""
         async with self._lock:
             self._agent_taint.pop(agent_id, None)
+            self._agent_lineage.pop(agent_id, None)
             logger.info("Taint CLEAR: agent=%s", agent_id)
 
 

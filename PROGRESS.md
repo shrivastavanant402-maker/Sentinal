@@ -52,12 +52,13 @@
 - [Developer 2] Factored out execute_enforcement service in backend/app/api/enforcement.py for clean Python service reuse without PEP duplication (2026-10-02)
 - [Developer 2] Implemented attack alert generation linked to ledger event for BLOCK and QUARANTINE decisions (2026-10-02)
 - [Developer 2] Created test_attacks_api.py with 8 comprehensive unit and integration tests covering all scenarios, alert linkage, and ledger integrity (2026-10-02)
-- All 97 backend tests passing with 100% pass rate (2026-10-02)
+- [Developer 1] Completed Step 5 Verification: Fixed dead variable in trust recovery, made repository authoritative for quarantine queries, and added 6 security boundary tests (2026-10-02)
+- [Developer 1] Completed Runtime Security Step 6: Provenance/Taint Tracking and Mission Drift Detection. Enhanced ProvenanceTracker with integer severity ranking, cross-agent lineage propagation, and source helpers. Hardened PDP decision precedence ensuring default-deny BLOCK is never weakened to APPROVAL. Added test_step6_provenance_drift.py with 24 dedicated tests covering all provenance, drift, and integration invariants. Created scripts/verify_step6.py E2E verifier (2026-10-02)
 
 ## In Progress
 
 ## Next
-- Phase 3: Ed25519 agent identity + capability tokens, behavioral anomaly detection (EWMA), WebSocket live event stream, forensic replay API (2026-10-02)
+- Runtime Security Step 7 (2026-10-02)
 
 ## Known Bugs
 - None (2026-10-02)

@@ -259,7 +259,35 @@ class PolicyDecisionPoint:
                 )
 
             if drift_result.severity == DriftSeverity.HIGH:
-                # Require approval for high drift
+                # If tool is NOT in contract allowlist, default-deny prevails as BLOCK
+                if contract is None or request.action not in contract.allowed_tools:
+                    logger.warning(
+                        "PEP BLOCK — High drift on unauthorized tool: agent=%s action=%s",
+                        request.agent_id, request.action,
+                    )
+                    trust_engine = self._get_trust_engine()
+                    ts = await trust_engine.apply_decision(
+                        agent_id=request.agent_id,
+                        decision=DecisionStatus.BLOCK,
+                        risk_level=RiskLevel.HIGH,
+                    )
+                    qc = self._get_quarantine_controller()
+                    await qc.maybe_quarantine(agent_id=request.agent_id, trust_score=ts.composite)
+                    return DecisionResponse(
+                        decision=DecisionStatus.BLOCK,
+                        allowed=False,
+                        reason=DecisionReason.CONTRACT_VIOLATION,
+                        risk_level=RiskLevel.HIGH,
+                        agent_id=request.agent_id,
+                        action=request.action,
+                        details={
+                            "message": f"Action '{request.action}' exceeds risk envelope and is not authorized in contract.",
+                            "drift": drift_details,
+                            "trust_score": ts.composite,
+                        },
+                    )
+
+                # Tool is in allowlist but breached risk envelope: escalate to APPROVAL
                 logger.warning(
                     "PEP APPROVAL — Mission drift HIGH: agent=%s action=%s drift_score=%.2f",
                     request.agent_id, request.action, drift_result.drift_score,
