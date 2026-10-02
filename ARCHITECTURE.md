@@ -1,764 +1,2631 @@
-# SentinelMesh — Full Architecture
-## PS002: Autonomous Agent Runtime Integrity System
+# AegisMesh --- MVP Architecture
 
-> **Audience:** the team and AI coding agents (Antigravity/Gemini). This file is the single source of truth.
-> If code and this file disagree, fix one of them **in the same commit**. Never diverge silently.
-> Progress lives in `PROGRESS.md`. Interfaces between workstreams (schemas, API) live here and in `openapi.yaml`.
+## Autonomous AI Agent Runtime Integrity System
 
-**Pitch:** SentinelMesh is a bodyguard for AI agents. It watches them, verifies them, catches hallucinations, stops rogue behavior, gives any single-agent IDE access to a full multi-agent team, and keeps a tamper-proof, replayable audit trail.
+> **This file is the single source of truth for the MVP
+> implementation.**
+>
+> AegisMesh is a runtime security and mission-integrity layer for
+> autonomous AI agents. It continuously observes agent actions, verifies
+> them against identity, permissions, mission contracts, plans,
+> provenance, and behavioral context, and can allow, require approval,
+> block, revert, halt, or quarantine an agent while preserving
+> cryptographically verifiable evidence.
+>
+> **Primary demo goal:** compromise one agent, detect the deviation,
+> contain only that agent, keep the rest of the workflow alive, replay
+> the incident, and verify the evidence.
+>
+> **Team:** 2 developers. Both work on the `main` branch.
+>
+> **Implementation principle:** build a real, working vertical slice
+> before adding advanced detectors or infrastructure. No fake alerts,
+> fake trust scores, hardcoded demo outcomes, or UI-only functionality.
 
----
+------------------------------------------------------------------------
 
-## 0. How to read this document
+# 1. Product Definition
 
-**Priority tags** (dependency order, not time estimates):
+## 1.1 One-line definition
 
-| Tag | Meaning |
-|---|---|
-| **P0** | PS002 core. Everything else depends on it. Build first. |
-| **P1** | Differentiators promised in the submission: IDE Guard, hallucination detection, Agent Bridge, provenance, collusion, shadow simulation, forensic replay, Merkle ledger. |
-| **P2** | Advanced backends from the tech stack that swap in behind an interface already built in P0/P1 (OPA alternatives, GNN, autoencoder, SPIRE, Kafka/NATS, JetBrains). Build the interface early, the swap last. |
+**AegisMesh is a digital immune system for autonomous AI agents.**
 
-**Design rule:** every component has a **default implementation** and, where the stack lists alternatives, a **pluggable interface** (`EventBus`, `PolicyEngine`, `AnomalyModel`, `IdentityProvider`, `VectorStore`). Code against the interface, never the vendor.
+## 1.2 Technical definition
 
-**Honesty rule (important for judges):** *Preventive* controls (SDK, MCP proxy, shell wrapper, LLM proxy) can stop an action before it happens. *Detective* controls (file watcher, git hooks) can only detect afterward and trigger revert. The docs, UI, and pitch must label each control as preventive or detective.
+AegisMesh establishes:
 
----
+1.  **Who** performed an action.
+2.  **What** the agent was supposed to do.
+3.  **What** it actually attempted to do.
+4.  **What data influenced the action.**
+5.  **Whether the action is consistent with the mission and current
+    plan.**
+6.  **How risky the action is.**
+7.  **What enforcement response is appropriate.**
+8.  **What cryptographically verifiable evidence remains after the
+    event.**
 
-## 1. Goals and PS002 mapping
+## 1.3 Core security loop
 
-| PS002 requirement | Where it is built |
-|---|---|
-| Continuous monitoring of multi-agent execution | §7 Instrumentation, §5 Event bus |
-| Real-time auditing | §5 Ledger, §18 Dashboard, WebSocket stream |
-| Verify actions vs expected behavior | §8 Contracts, OPA policy, plan verifier |
-| Catch drift, tampering, faulty behavior | §9 drift, attestation, integrity, anomaly |
-| Identify behavioral anomalies | §9.1 anomaly ensemble |
-| Identify policy violations | §8 policy, §9.4 taint |
-| Flag or halt non-compliant agents | §11 enforcement controller |
-| Trust and accountability | §6 identity, §10 trust, §5 ledger, §16 replay |
-
----
-
-## 2. System architecture
-
-```text
-┌──────────────────────────────────────────────────────────────────────┐
-│ IDE LAYER   VS Code │ Cursor │ Windsurf │ JetBrains │ Cline │ Continue │
-│             (IDE Guard extension: diagnostics, sidebar, approvals)      │
-└───────────────┬──────────────────────────────────────────────────────┘
-                │ MCP / A2A / REST / OpenAI-compatible LLM proxy
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ SENTINELMESH AGENT BRIDGE (SMAB)                                       │
-│ Discovery │ Router │ Negotiator │ Aggregator │ Trust Propagator │      │
-│ Policy Adapter                                                         │
-└───────────────┬──────────────────────────────────────────────────────┘
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ MONITORED MULTI-AGENT NETWORK                                          │
-│ Planner │ Researcher │ Coder │ Tester │ Reviewer │ Security            │
-│ (LangGraph default; AutoGen / CrewAI via SDK adapters)                 │
-└───────────────┬──────────────────────────────────────────────────────┘
-                │ every action passes a Policy Enforcement Point (PEP)
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ INSTRUMENTATION: Agent SDK (Py/TS) │ MCP proxy │ LLM proxy │          │
-│ shell wrapper │ file watcher │ git hooks                              │
-└───────────────┬──────────────────────────────────────────────────────┘
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ RUNTIME INTEGRITY CORE (PS002)                                         │
-│ Identity │ Signed Event Bus │ Ledger (hash chain + Merkle) │           │
-│ Policy Decision Point (facts → OPA) │ Plan Verifier │                  │
-│ Detectors: anomaly, drift, taint, collusion, injection, hallucination │
-│ Trust Engine │ Enforcement Controller │ Shadow Simulator │ Snapshots  │
-└───────────────┬──────────────────────────────────────────────────────┘
-                ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│ OUTPUT: Dashboard (8 views) │ IDE diagnostics │ Alerts │ Forensic      │
-│ Replay │ Grafana/Jaeger │ CLI                                         │
-└──────────────────────────────────────────────────────────────────────┘
+``` text
+Agent
+  |
+  v
+Interception / Policy Enforcement Point
+  |
+  v
+Identity + Mission + Plan + Context
+  |
+  v
+Policy / Risk / Integrity Decision
+  |
+  +---------> ALLOW ---------> Tool
+  |
+  +---------> APPROVAL ------> Human
+  |
+  +---------> SANDBOX -------> Shadow execution
+  |
+  +---------> BLOCK ---------> Tool never executes
+  |
+  +---------> QUARANTINE ---> Agent isolated
+  |
+  v
+Evidence Ledger
+  |
+  +--> Dashboard
+  +--> Alerts
+  +--> Replay
+  +--> Merkle proof
+  +--> Blockchain trust anchor
 ```
 
-**Three planes:**
-- **Data plane:** agents, tools, PEPs. Latency-sensitive.
-- **Control plane:** PDP, OPA, trust, enforcement. Decides.
-- **Evidence plane:** ledger, replay, dashboard. Proves.
+------------------------------------------------------------------------
 
----
+# 2. PS002 Requirements Mapping
 
-## 3. Tech stack (final)
+The MVP must directly demonstrate these requirements:
 
-| Layer | Default | Pluggable / advanced (P2) |
-|---|---|---|
-| Agent frameworks | LangGraph | AutoGen, CrewAI (via SDK adapters) |
-| Backend | Python 3.11, FastAPI, Uvicorn, Pydantic v2 | Go or Rust sidecar for the PEP hot path |
-| Event bus | Redis Streams | NATS JetStream, Kafka |
-| Policy engine | OPA (Rego), run as a sidecar container | Cedar |
-| Primary store | PostgreSQL | TimescaleDB extension for event time-series |
-| Analytics | Postgres/Timescale | ClickHouse |
-| Cache / revocation / rate limits | Redis | |
-| Vector store | Qdrant | Weaviate |
-| Embeddings | `sentence-transformers` (all-MiniLM-L6-v2, local) | Gemini/OpenAI embeddings |
-| ML | scikit-learn (Isolation Forest), River (online) | PyTorch autoencoder |
-| Graph | NetworkX | PyTorch Geometric (GNN) |
-| Static analysis | Semgrep, Bandit, tree-sitter | CodeQL |
-| Type/symbol checks | pyright, tsc, language servers via LSP | rust-analyzer |
-| Identity | Ed25519 signing, did:key, capability JWT (EdDSA), internal mTLS (step-ca) | SPIFFE/SPIRE |
-| Observability | OpenTelemetry, Prometheus, Grafana, Jaeger | |
-| Frontend | Next.js, React, Tailwind, shadcn/ui | |
-| Graph viz | React Flow (or Cytoscape.js) | |
-| Real-time | WebSocket | |
-| IDE | VS Code Extension API (TypeScript) | JetBrains Plugin SDK (Kotlin) |
-| Sandbox | Docker (`--network none`, read-only rootfs, tmpfs) | gVisor/Firecracker |
-| Deployment | Docker Compose | Kubernetes (Helm chart) |
+  -----------------------------------------------------------------------
+  PS002 requirement                   AegisMesh implementation
+  ----------------------------------- -----------------------------------
+  Continuous monitoring               Runtime interceptor + event stream
 
-**LLM note:** agents in `llm` mode need a model API key (for example a Gemini API key). IDE subscription credits that power Antigravity do not cover your app's runtime API calls. Every demo and attack also has a deterministic `scripted` mode that needs no key.
+  Real-time auditing                  Append-only event ledger +
+                                      WebSocket
 
----
+  Verify actions vs expected behavior Mission contracts + OPA + plan
+                                      verifier
 
-## 4. Repository structure
+  Detect drift/tampering/faulty       Mission drift + integrity checks +
+  behavior                            anomaly detection
 
-```text
-sentinelmesh/
-├── ARCHITECTURE.md
-├── PROGRESS.md
-├── openapi.yaml                   # generated from FastAPI; source for TS/Kotlin clients
-├── Makefile                       # run, test, attack, benchmark, lint, gen-clients
-├── docker-compose.yml
-├── core/
-│   ├── schemas/                   # Pydantic models: Event, Decision, Alert, Finding, Contract, Plan
-│   ├── event_bus/                 # EventBus interface + redis_streams.py (+ nats.py, kafka.py)
-│   ├── identity/                  # keys, did:key, registry, attestation, capability tokens, mTLS helpers
-│   ├── ledger/                    # hash chain, Merkle checkpoints, proofs, verify, external anchor
-│   ├── contracts/                 # YAML loader, validator, compiler → OPA data
-│   ├── policy/                    # PolicyEngine interface + opa_client.py; rego/ lives in /policies
-│   ├── pdp/                       # decision pipeline: facts → policy → obligations → decision
-│   ├── verifier/                  # plan verifier (state machine)
-│   ├── detectors/
-│   │   ├── anomaly/               # ewma.py, isolation_forest.py, autoencoder.py (P2)
-│   │   ├── drift/                 # semantic drift (embeddings + Qdrant)
-│   │   ├── provenance/            # taint + untrusted-content provenance
-│   │   ├── collusion/             # motifs.py, gnn.py (P2)
-│   │   ├── injection/             # heuristics + classifier
-│   │   └── hallucination/         # packages, apis, files, tests, security, claims
-│   ├── trust/                     # trust engine + propagation
-│   ├── enforcement/               # controller, approvals, throttle, halt, quarantine
-│   ├── shadow/                    # shadow simulator (digital twin)
-│   ├── snapshots/                 # pre-action snapshots + revert
-│   ├── replay/                    # session reconstruction + deterministic policy re-evaluation
-│   ├── api/                       # FastAPI routers + WebSocket hub
-│   └── telemetry/                 # OpenTelemetry + Prometheus metrics
-├── bridge/                        # Agent Bridge (SMAB)
-│   ├── discovery/ router/ negotiator/ aggregator/ trust_propagator/ policy_adapter/
-│   ├── protocols/{mcp,a2a,rest,llm_proxy}/
-│   └── network/                   # native agents: planner, researcher, coder, tester, reviewer, security
-├── instrumentation/
-│   ├── sdk_python/                # guard(), signing, adapters for LangGraph/AutoGen/CrewAI
-│   ├── sdk_ts/
-│   ├── mcp_proxy/
-│   ├── llm_proxy/
-│   ├── shell_wrapper/             # sm-shell
-│   ├── watchers/                  # file watcher
-│   └── git_hooks/
-├── ide/
-│   ├── vscode/                    # TypeScript extension
-│   ├── jetbrains/                 # Kotlin plugin (P2)
-│   └── shared/                    # generated API clients, claim-vs-reality model
-├── dashboard/
-│   ├── frontend/                  # Next.js app (8 views)
-│   └── backend/                   # BFF/aggregation endpoints if needed
-├── policies/                      # Rego policies + tests (opa test)
-├── contracts/                     # per-agent YAML contracts
-├── ml/                            # training scripts, synthetic data generators, saved models
-├── demos/
-│   ├── multi_agent_attack/
-│   ├── ide_hallucination/
-│   ├── collusion/
-│   └── bridge_delegation/
-├── attacks/                       # attack scripts + benign scenarios (the acceptance suite)
-├── benchmark/                     # harness, labelled scenarios, result writer
-├── tests/                         # unit, integration, e2e
-├── scripts/seed_events.py         # dev-only: real-schema events through real endpoints
-├── docs/
-└── deploy/                        # compose files, helm chart, grafana dashboards, otel config
+  Identify behavioral anomalies       EWMA baseline + Isolation Forest
+
+  Identify policy violations          OPA + risk engine
+
+  Flag or halt non-compliant agents   Enforcement controller
+
+  Trust and accountability            Agent identity + trust score +
+                                      signed evidence + replay
+  -----------------------------------------------------------------------
+
+The submitted architecture defines these same PS002 mappings; preserve
+them as the core of the implementation.
+
+------------------------------------------------------------------------
+
+# 3. MVP Scope
+
+## 3.1 MUST BUILD
+
+### Runtime
+
+-   Python 3.11
+-   FastAPI
+-   WebSocket
+-   Pydantic
+-   Redis Streams
+-   PostgreSQL
+-   OPA/Rego
+-   Docker
+
+### Agents
+
+Build exactly three native demo agents:
+
+``` text
+Planner
+Researcher
+Executor
 ```
 
----
+Use LangGraph or a lightweight internal orchestration layer. The
+security layer must remain framework-independent.
 
-## 5. Events, bus and ledger (P0)
+### Security
 
-### 5.1 Event schema (canonical)
+-   Agent registration
+-   Ed25519 agent identity
+-   Short-lived capability token
+-   Mission contract
+-   Tool interception
+-   OPA policy decision
+-   Plan verification
+-   Mission drift detection
+-   Basic behavioral anomaly detection
+-   Untrusted-content labeling
+-   Taint/provenance tracking
+-   Trust score
+-   Graduated enforcement
+-   Human approval
+-   Agent quarantine
+-   Snapshot/revert
+-   Shadow execution for selected high-risk actions
 
-```json
+### Evidence
+
+-   Signed events
+-   Hash chain
+-   Merkle checkpoints
+-   Ledger verification
+-   Blockchain/testnet anchor for Merkle roots
+-   Forensic replay
+
+### UI
+
+Build five excellent views:
+
+1.  Live Operations
+2.  Agent Detail
+3.  Incident / Alert Detail
+4.  Forensic Replay
+5.  Audit Ledger / Blockchain Verification
+
+------------------------------------------------------------------------
+
+# 4. DO NOT BUILD IN MVP
+
+These are future/pluggable capabilities:
+
+-   GNN collusion detector
+-   Deep autoencoder
+-   SPIFFE/SPIRE
+-   Kafka/NATS
+-   Kubernetes
+-   JetBrains plugin
+-   Full enterprise IAM
+-   eBPF enforcement
+-   Multiple production agent frameworks
+-   Full distributed deployment
+-   Complex ML training pipeline
+
+Interfaces may be designed for future replacement, but do not let these
+delay the working vertical slice.
+
+------------------------------------------------------------------------
+
+# 5. Architecture
+
+## 5.1 Three planes
+
+### Data Plane
+
+Latency-sensitive path:
+
+``` text
+Agents
+  |
+Tools
+  |
+PEP / Interceptor
+```
+
+### Control Plane
+
+Decision-making path:
+
+``` text
+Identity
+Mission Contract
+Plan Verifier
+OPA
+Risk Engine
+Trust Engine
+Enforcement Controller
+```
+
+### Evidence Plane
+
+Accountability path:
+
+``` text
+Event Ledger
+Hash Chain
+Merkle Checkpoints
+Blockchain Anchor
+Replay
+Dashboard
+```
+
+------------------------------------------------------------------------
+
+# 6. High-Level Architecture
+
+``` text
+                         ┌──────────────────────┐
+                         │      Dashboard       │
+                         │ React / Next.js      │
+                         └──────────┬───────────┘
+                                    │ WebSocket/REST
+                                    v
+┌────────────────────────────────────────────────────────────────┐
+│                         FASTAPI CORE                            │
+│                                                                │
+│  Agents API   Enforcement API   Alerts API   Replay API       │
+│  Ledger API   Policies API      Approvals API Metrics API      │
+└──────────────┬─────────────────────────────┬───────────────────┘
+               │                             │
+               v                             v
+        ┌─────────────┐              ┌─────────────┐
+        │ Redis       │              │ OPA         │
+        │ Streams     │              │ Policy      │
+        └──────┬──────┘              └──────┬──────┘
+               │                            │
+               v                            v
+┌────────────────────────────────────────────────────────────────┐
+│                      AEGISMESH CORE                            │
+│                                                                │
+│ Identity │ Contracts │ Plan Verifier │ Risk Engine             │
+│ Trust    │ Provenance/Taint │ Drift │ Anomaly │ Enforcement    │
+│                                                                │
+└──────────────────────────────┬─────────────────────────────────┘
+                               │
+                               v
+                    ┌─────────────────────┐
+                    │ PostgreSQL Ledger   │
+                    │ append-only events  │
+                    └─────────┬───────────┘
+                              │
+                    ┌─────────┴──────────┐
+                    v                    v
+             Hash Chain             Merkle Tree
+                                        |
+                                        v
+                                Blockchain Anchor
+```
+
+------------------------------------------------------------------------
+
+# 7. Agent Runtime
+
+## 7.1 Demo topology
+
+``` text
+                 ┌──────────┐
+                 │ Planner  │
+                 └────┬─────┘
+                      |
+             ┌────────┴────────┐
+             v                 v
+       ┌───────────┐     ┌───────────┐
+       │ Researcher│     │  Executor │
+       └───────────┘     └───────────┘
+```
+
+### Planner
+
+Responsibilities: - understand user goal - create execution plan -
+delegate work - cannot directly access sensitive tools
+
+### Researcher
+
+Responsibilities: - web search/read - approved research database reads -
+return evidence
+
+### Executor
+
+Responsibilities: - transform verified research into final artifact -
+run approved local operations - cannot access secrets unless explicitly
+authorized
+
+------------------------------------------------------------------------
+
+# 8. Tool Model
+
+MVP tools:
+
+``` text
+web.search
+web.read
+research_db.read
+database.read
+database.export
+external.post
+fs.read
+fs.write
+shell.exec
+report.generate
+```
+
+Every tool has:
+
+``` yaml
+name:
+risk:
+input_schema:
+required_capabilities:
+allowed_agents:
+sensitivity:
+```
+
+Unknown tools are denied by default.
+
+------------------------------------------------------------------------
+
+# 9. Policy Enforcement Point
+
+Every important action must pass through a PEP.
+
+``` python
+decision = aegis.guard(
+    agent_id="researcher-01",
+    session_id=session_id,
+    tool="database.export",
+    args={"table": "customers"}
+)
+
+if decision.allowed:
+    execute_tool()
+else:
+    raise ActionDenied(decision.reason)
+```
+
+The PEP must:
+
+1.  create the action event
+2.  validate identity/token
+3.  collect policy facts
+4.  invoke the policy engine
+5.  execute obligations
+6.  record the decision
+7.  return the decision
+
+### Preventive vs detective
+
+Preventive: - SDK - tool interceptor - shell wrapper - MCP proxy if
+implemented
+
+Detective: - filesystem watcher - post-action verification - git hook
+
+Never claim a detective control prevented an action.
+
+------------------------------------------------------------------------
+
+# 10. Agent Identity
+
+Each agent gets an Ed25519 keypair.
+
+Registration stores:
+
+``` json
 {
-  "id": "uuid4",
-  "seq": 1284,
-  "ts": "2026-10-03T10:15:22.123Z",
-  "trace_id": "otel trace id",
-  "span_id": "otel span id",
-  "parent_event_id": "uuid or null",
-  "agent_id": "coder",
-  "session_id": "sess-001",
-  "source": "sdk|mcp_proxy|llm_proxy|shell|fs_watcher|git_hook|ide|core",
-  "type": "tool_call_request",
-  "payload": { "tool": "fs.write", "args": { "path": "src/cache.py" } },
-  "labels": ["untrusted", "secret"],
-  "policy_version": "sha256 of policy bundle used",
-  "decision": null,
-  "content_hash": "hex",
-  "prev_hash": "hex",
-  "hash": "hex",
-  "agent_signature": "base64",
-  "signature": "base64"
+  "agent_id": "researcher-01",
+  "role": "researcher",
+  "public_key": "...",
+  "status": "active",
+  "trust": 100,
+  "contract_version": 1
 }
 ```
 
-**Event types:**
-`agent_registered`, `heartbeat`, `attestation`, `plan_declared`, `plan_step`, `tool_call_request`, `decision`, `tool_call_result`, `llm_prompt`, `llm_response`, `message`, `delegation`, `fs_change`, `git_event`, `claim`, `finding`, `alert`, `enforcement`, `trust_update`, `approval_requested`, `approval_resolved`, `simulation_result`, `snapshot`, `revert`, `bridge_task`, `bridge_delegation`, `bridge_result`, `ide_session`, `checkpoint`.
+Agent-originated events are signed.
 
-### 5.2 Hashing and signing (definitive)
+The system must reject: - unknown agent - invalid signature - expired
+capability token - revoked token - invalid session - attestation
+mismatch
 
-1. The producer builds the event without `seq`, `prev_hash`, `hash`, `agent_signature`, `signature`.
-2. `content_hash = sha256(canonical_json(event_without_those_fields))`. Canonical JSON: sorted keys, no whitespace, UTF-8.
-3. **Agent-originated events:** the agent signs `content_hash` with its Ed25519 key, producing `agent_signature`.
-4. The ledger (single writer) assigns `seq` and `prev_hash`, then computes `hash = sha256(content_hash || prev_hash || seq)`.
-5. The core signs `hash` with the core key, producing `signature`. **System events** (decision, alert, enforcement, trust_update, approvals, checkpoint) have no `agent_signature`.
-6. Verification checks both signatures, the hash recomputation, and chain continuity.
+------------------------------------------------------------------------
 
-### 5.3 Ledger: hash chain plus Merkle checkpoints
+# 11. Capability Tokens
 
-- **Single writer** (the ledger service) appends events inside a transaction using a Postgres advisory lock. Producers publish to the bus, the ledger consumes in order, assigns seq, and stores. Inline enforcement uses a synchronous path that calls the same append function.
-- **Merkle checkpoints:** every 100 events or 30 s, whichever first, compute the Merkle root over event `hash` values in the range. Append a `checkpoint` event `{from_seq, to_seq, merkle_root}` signed by the core.
-- **External anchor:** each checkpoint root is also appended to `anchors/anchors.log` (append-only file) and optionally committed and pushed to a git remote. This catches the case where an attacker rewrites the entire database consistently.
-- **Inclusion proof:** `GET /v1/ledger/proof/{seq}` returns the Merkle path so any single event can be proven part of a signed checkpoint.
-- **Verify** (`GET /v1/ledger/verify`): (1) recompute hashes and chain, (2) verify all signatures against the registry, (3) recompute Merkle roots against checkpoints, (4) compare checkpoints with the external anchor log. Return `{ok, checked, first_broken_seq, reason, checks: {chain, signatures, merkle, anchor}}`.
+Use short-lived JWTs signed with EdDSA.
 
-### 5.4 Event bus
+Token contains:
 
-`EventBus` interface: `publish(topic, event)`, `subscribe(topic, group)`. Default: Redis Streams with consumer groups. Topics: `events.raw`, `events.ledgered`, `alerts`, `enforcement`. Detectors consume `events.ledgered`; the WebSocket hub consumes everything.
+``` json
+{
+  "sub": "researcher-01",
+  "session": "sess-001",
+  "tools": ["web.search", "web.read"],
+  "jti": "...",
+  "exp": "..."
+}
+```
 
-### 5.5 Data model (Postgres)
+When an agent is halted:
 
-`events`, `agents`, `agent_attestations`, `contracts` (versioned), `policy_bundles` (versioned, hash), `sessions`, `alerts`, `findings`, `trust_history`, `approvals`, `snapshots`, `taint_registry`, `bridge_tasks`, `checkpoints`, `ide_sessions`. The `events` table is append-only (revoke UPDATE/DELETE from the app role; the tamper demo uses a superuser role).
+``` text
+status = halted
++
+token jti revoked
+```
 
----
+Do not rely on UI state alone for enforcement.
 
-## 6. Identity and attestation (P0, advanced backends P2)
+------------------------------------------------------------------------
 
-- **Agent identity:** each agent generates an Ed25519 keypair at start. The public key is registered; the agent DID is `did:key` derived from it. A SPIFFE-style ID `spiffe://sentinelmesh.local/agent/<id>` is stored in the registry and in capability tokens (real SPIRE issuance is a P2 backend).
-- **Registry:** `agent_id`, role, public key, DID, contract version, status (`active|watched|restricted|halted|quarantined`), trust, last heartbeat.
-- **Attestation (tamper detection for the agent itself):** on registration and every heartbeat the agent sends `{code_hash, framework, version, launch_args_hash}` signed with its key. `code_hash` is the sha256 of the agent's source files or container image digest. A change mid-run emits `attestation_drift` (critical).
-- **Capability tokens:** short-lived JWT (EdDSA, ~5 min) with `sub`, `session`, allowed tool scopes, `jti`. Refreshed via heartbeat. Revoked by adding `jti` to the Redis revocation set. **Halting an agent = revoking its token plus setting status.**
-- **Service-to-service:** mTLS using a local CA (step-ca) between core, OPA, bridge, and proxies. P2: replace the CA with SPIRE.
-- **Human auth:** dashboard and IDE use a JWT login (single-user or simple RBAC: viewer, operator, admin). Approvals and halts require operator or higher and are themselves ledgered.
+# 12. Mission Contracts
 
----
+Each agent has a versioned YAML contract.
 
-## 7. Instrumentation (P0 SDK and MCP proxy, P1 the rest)
+Example:
 
-Each wrapper is a **PEP**: it builds a signed event, asks the PDP, and acts on the decision. All emit events with a `source` field.
+``` yaml
+agent_id: researcher-01
+role: researcher
+version: 1
 
-| Wrapper | Type | What it does |
-|---|---|---|
-| **Agent SDK (Python, TS)** | Preventive | `guard.call(tool, args)` signs and sends `tool_call_request`, executes only on `allow`, posts `tool_call_result`. Raises `ActionDenied`, `AgentHalted`, `ApprovalTimeout`. Adapters wrap LangGraph tools, AutoGen functions, CrewAI tools. Also emits `plan_declared`, `message`, `delegation`, `heartbeat`. |
-| **MCP proxy** | Preventive | Sits between an MCP client (IDE agent) and real MCP servers (stdio and HTTP/SSE). Intercepts `tools/call`, asks the PDP, forwards on allow, returns a JSON-RPC error with the reason on deny. Also logs `tools/list` and resource reads. |
-| **LLM proxy** | Preventive (prompts), detective (responses) | OpenAI-compatible reverse proxy (plus Gemini and Anthropic-style endpoints). IDE agents that allow a custom base URL point at it. Logs `llm_prompt` and `llm_response` (stores hashes by default, content encrypted when `LOG_CONTENT=true`). Prompt side: secret/PII scan (DLP) with redaction or block. Response side: injection indicators, proposed tool calls forwarded to the PDP for pre-check. |
-| **Shell wrapper (`sm-shell`)** | Preventive | A shim shell or PTY wrapper that sends each command to the PDP before executing. Used as the agent's terminal. Supports allow/deny/approval and `simulate_first` (see §12). |
-| **File watcher** | **Detective** | `watchdog` over the workspace. Emits `fs_change` with before/after hash and diff stats. Attributes to an agent by time window plus process. Protected-path writes (for example `.env`) trigger alert plus revert from snapshot. Cannot prevent writes by agents that bypass the PEPs, and the UI must say so. |
-| **Git hooks** | **Detective / gate** | `pre-commit`, `pre-push`, `post-commit`. Verify the diff: hallucination checks, secret scan, claim verification. A critical finding blocks the commit. |
+mission:
+  description: "Research publicly available information."
 
-**Contract for all PEPs:** fail-closed for P0 high-risk tools (PDP unreachable → deny), fail-open with loud alert for low-risk reads, configurable per tool risk level.
+allowed_tools:
+  - web.search
+  - web.read
+  - research_db.read
 
----
+forbidden_tools:
+  - database.export
+  - external.post
+  - payment.execute
 
-## 8. Verification: contracts, policy, plan verifier (P0)
-
-### 8.1 Behavioral contracts (YAML, one per agent)
-
-```yaml
-agent_id: coder
-role: "Writes and edits source code for assigned tasks"
-version: 3
-allowed_tools: [fs.read, fs.write, shell.exec, git.diff]
 fs:
-  read_allow:   ["workspace/**"]
-  write_allow:  ["workspace/src/**", "workspace/tests/**"]
-  deny:         ["**/.env", "**/*.pem", "**/id_rsa*"]
-shell:
-  allow_commands: ["pytest", "npm test", "pip install", "ls", "cat"]
-  deny_patterns:  ["curl .*\\|\\s*sh", "rm -rf /", "chmod 777"]
+  read_allow:
+    - workspace/research/**
+  write_allow:
+    - workspace/reports/**
+
 http:
-  domain_allow: ["pypi.org", "registry.npmjs.org"]
-rate_limit: { max_calls_per_10s: 20 }
-may_receive_delegation_from: [planner]
-risk_levels: { fs.read: low, fs.write: medium, shell.exec: high, http.get: medium }
+  domain_allow:
+    - trusted-research.example
+
+risk_levels:
+  web.search: low
+  web.read: low
+  research_db.read: medium
+  database.export: critical
+  external.post: high
+
 obligations:
-  shell.exec: [simulate_first]
-  fs.write:   [snapshot_before]
+  database.export:
+    - require_approval
+  external.post:
+    - require_approval
 ```
 
-Contracts are validated against a JSON Schema, versioned, hashed, and compiled to JSON as OPA **data**. Default deny: unknown tool, path, command, or domain is denied.
+Contracts are: - schema validated - versioned - hashed - compiled into
+policy data
 
-### 8.2 Policy decision point (PDP) pipeline
+Default deny unknown actions.
 
-```text
-event → 1 integrity (signatures, chain input, replay id, token valid, attestation ok)
-      → 2 agent status (halted / quarantined → deny)
-      → 3 facts: contract match, rate, taint hits, delegation intersection,
-                 plan conformance, untrusted-provenance, injection score, trust tier
-      → 4 OPA (Rego) evaluates facts + contract data → decision + severity + obligations
-      → 5 obligations executor: snapshot_before | simulate_first | require_approval | notify
-      → 6 decision event appended to ledger, published, returned to PEP
+------------------------------------------------------------------------
+
+# 13. Policy Decision Pipeline
+
+``` text
+tool_call_request
+       |
+       v
+1. Identity validation
+       |
+2. Token validation
+       |
+3. Agent status
+       |
+4. Contract lookup
+       |
+5. Plan state
+       |
+6. Provenance / taint
+       |
+7. Mission consistency
+       |
+8. Behavioral risk
+       |
+9. OPA policy
+       |
+10. Obligations
+       |
+11. Decision event
+       |
+12. Return ALLOW / APPROVAL / DENY
 ```
 
-**OPA input:**
-```json
-{ "event": {...},
-  "agent": {"id": "coder", "role": "...", "trust": 82, "tier": "trusted", "status": "active"},
-  "session": {"plan_state": "implementing", "delegation_chain": ["planner","coder"],
-              "taint_labels": ["secret:.env"]},
-  "facts": {"contract_ok": true, "rate_ok": true, "taint_hit": false,
-            "delegation_ok": true, "plan_ok": true, "untrusted_trigger": false,
-            "injection_score": 0.12},
-  "context": {"now": "...", "recent_rate": 4} }
+OPA returns:
+
+``` json
+{
+  "decision": "deny",
+  "reason_code": "MISSION_VIOLATION",
+  "reason": "Action is outside the researcher's mission.",
+  "severity": "high",
+  "obligations": ["alert", "trust_penalty"]
+}
 ```
-**OPA output:** `{decision, reason_code, reason, severity, obligations[]}`. Every decision stores the `policy_version` hash so replay can re-evaluate with the exact policy (§16). Rego policies live in `/policies` with `opa test` unit tests. Cedar can implement the same `PolicyEngine` interface (P2).
 
-### 8.3 Plan verifier (state machine)
+------------------------------------------------------------------------
 
-The Planner (or the Bridge on behalf of the IDE) emits `plan_declared`:
-```json
-{ "goal": "Add Redis caching with tests and security review",
+# 14. Mission Integrity
+
+This is the primary product differentiator.
+
+For every action compare:
+
+``` text
+MISSION
+   +
+PLAN
+   +
+CURRENT CONTEXT
+   +
+AGENT CAPABILITIES
+        |
+        v
+EXPECTED ACTION
+        |
+        v
+ACTUAL ACTION
+```
+
+Generate:
+
+``` text
+mission_alignment_score: 0..1
+```
+
+Example:
+
+``` text
+Mission:
+"Research Redis caching strategies."
+
+Action:
+web.search("Redis cache invalidation")
+
+Alignment:
+0.96
+```
+
+Suspicious:
+
+``` text
+Mission:
+"Research Redis caching strategies."
+
+Action:
+database.export("customers")
+
+Alignment:
+0.02
+```
+
+------------------------------------------------------------------------
+
+# 15. Plan Verifier
+
+Planner creates:
+
+``` json
+{
+  "goal": "Research Redis caching strategies",
   "steps": [
-    {"id": "s1", "agent": "researcher", "tools": ["http.get", "fs.read"], "next": ["s2"]},
-    {"id": "s2", "agent": "coder",      "tools": ["fs.write", "shell.exec"], "next": ["s3"]},
-    {"id": "s3", "agent": "tester",     "tools": ["shell.exec"], "next": ["s4"]},
-    {"id": "s4", "agent": "reviewer",   "tools": ["fs.read"], "next": ["s5"]},
-    {"id": "s5", "agent": "security",   "tools": ["fs.read", "shell.exec"], "next": []} ] }
-```
-The verifier tracks the current state per session. An action by an agent or tool not enabled in the current state is a **plan deviation**: `plan_ok=false` as a PDP fact (low/medium alert, escalates if repeated). Skipped mandatory steps (for example Security review before final result) are flagged at completion.
-
----
-
-## 9. Detectors
-
-Inline detectors compute PDP facts synchronously (<100 ms). Async detectors consume the ledgered stream and may emit alerts that the enforcement controller escalates.
-
-### 9.1 Anomaly detection (async, P0 EWMA, P1 Isolation Forest, P2 autoencoder)
-
-- **Features per agent per window (10 s):** calls, distinct tools, mean arg length, arg entropy, path depth, inter-arrival time, error/deny rate, bytes out, first-seen tool/path/domain flags.
-- **EWMA + z-score** per feature (z > 3 → medium).
-- **Isolation Forest** (scikit-learn; online alternative: River HalfSpaceTrees) trained on benign runs from the benchmark generator, retrained on a schedule.
-- **Autoencoder** (PyTorch) over feature windows; reconstruction error above a calibrated threshold → anomaly.
-- **Ensemble score** = weighted max; each model reports its contribution in the alert for explainability.
-- `AnomalyModel` interface so models plug in without changing the pipeline.
-
-### 9.2 Semantic drift (async, P1)
-
-- Embed the session **goal** and each agent's rolling window of actions/messages (local sentence-transformers).
-- Store per-agent baseline embeddings and the goal vector in Qdrant.
-- **Drift score** = max(distance from goal, distance from agent baseline centroid). Above threshold for N consecutive windows → drift alert (medium, then high).
-- Cheap pre-filter: skip embedding when the action is exactly in the plan's expected tool set.
-
-### 9.3 Injection and instruction provenance (inline + async, P1)
-
-- **Untrusted content labeling:** anything from external or retrieved sources (web pages, documents, tool outputs from third parties, retrieved memory) is labeled `untrusted`.
-- **Heuristic + classifier scoring** of untrusted content for instruction-like text ("ignore previous", role-change, exfil phrasing); an LLM-judge fallback runs async.
-- **Provenance rule:** a high-risk action requested right after the agent consumed high-scoring untrusted content gets `untrusted_trigger=true`. Policy can require approval or deny.
-- **Memory poisoning:** agent memory writes inherit the labels of their source; later reads re-introduce the label.
-
-### 9.4 Provenance and taint tracking (inline, P1)
-
-- **Sources:** files matching deny/secret patterns, `.env` values, results from tools tagged `sensitivity: secret|pii`, regex/entropy scanners for keys, tokens, emails, phone and ID numbers.
-- **Registration:** each source value is stored by fingerprint (sha256 of normalized tokens ≥ 8 chars, plus fuzzy n-gram sketches for partial leaks) with `origin_agent`, `origin_event`, label.
-- **Propagation:** taint attaches to the **session** and to messages/results derived from tainted inputs (conservative: any message produced by an agent after reading tainted data and containing a fingerprint match is tainted; LLM-rewritten leaks are caught by the n-gram sketch plus the async semantic check).
-- **Sinks:** `http.post`, `http.get` to non-allowlisted domains (query strings), `shell.exec`, `fs.write` outside allowed paths, `git.push`, outbound `message` to agents not cleared for the label, LLM prompts to external models.
-- **Violation:** tainted fingerprint in sink args → `taint_hit=true` → deny, critical, halt origin chain.
-- **Lineage view:** the dashboard renders the taint path source → agent → agent → sink.
-
-### 9.5 Collusion detection (async, P1 motifs, P2 GNN)
-
-NetworkX `DiGraph` per session; nodes are agents, edges are `message`, `delegation`, `data-flow` (taint carriers) with counts and timestamps.
-
-**Motifs:**
-- Ping-pong cycles (A→B→A repeated > N times in a window)
-- Relay chains moving labeled data across ≥ 2 hops toward a sink
-- Mutual approval (A approves B's request while B approves A's)
-- Delegation widening (delegate acts beyond the delegator's permissions)
-- Star amplification (one agent fan-out to many in bursts)
-- Synchronized bursts across agents
-
-**GNN (P2):** PyTorch Geometric GraphSAGE node classifier trained on synthetic session graphs (benign versus collusive) from `ml/`. Runs async; motif detector remains the fallback and the explanation source.
-
-### 9.6 Hallucination and claim verification (P1)
-
-Applies to IDE-agent and network-agent outputs. Pipeline:
-
-1. **Claim extraction:** parse agent final messages and plan steps into structured `claim` events: `installed(pkg)`, `created(file)`, `modified(file)`, `tests_passed(n)`, `uses_api(symbol)`, `fixed(issue)`, `no_secrets`.
-2. **Checks** (each emits a `finding` with `severity`, `evidence`, `confidence`):
-
-| Check | How |
-|---|---|
-| **Fake packages** | Query PyPI, npm, crates.io JSON APIs. Not found → critical (possible slopsquatting). Also: very new/low-download package, edit-distance typosquat of a popular package, name not in lockfile. Results cached. |
-| **Fake APIs / symbols** | tree-sitter parse the diff for imports, calls, attributes. Resolve against the repo index, installed package introspection, and LSP (`pyright`, `tsc`, `rust-analyzer`). Unresolved symbol or wrong signature → finding. |
-| **Fake file references** | Parse paths in code and messages; verify against the repo tree (and git index). |
-| **False test claims** | Actually run the tests in the sandbox (§12). Compare real pass/fail counts with the claim. Mismatch → high. |
-| **Insecure code** | Semgrep (OWASP rules) and Bandit on changed files; CodeQL optional. Hardcoded secrets, SQL injection, unsafe deserialization, shell injection → finding. |
-| **Unsupported claims** | RAG over the repo (Qdrant). For each factual claim about the codebase, retrieve evidence and run an entailment check (NLI model or LLM judge). No supporting evidence → low/medium. |
-
-3. **Claim-vs-reality record:** `{claim, verdict: verified|contradicted|unverifiable, evidence}` feeds the IDE sidebar and the trust engine (false claims reduce claim-accuracy trust).
-4. **Triggers:** on `fs_change` and `git_event` (watcher/hooks), on `claim` events, and before the Bridge returns results to the IDE.
-
----
-
-## 10. Trust engine (P0)
-
-**Dimensions per agent (0–100):** `compliance` (policy), `integrity` (signatures/attestation), `consistency` (anomaly/drift), `claim_accuracy` (hallucination findings).
-
-`trust = clamp(0.35*compliance + 0.25*integrity + 0.2*consistency + 0.2*claim_accuracy)` (weights configurable). Start all dimensions at 100.
-
-**Penalties** by alert severity on the relevant dimension: low −5, medium −15, high −30, critical −50. **Recovery:** +1 per 10 consecutive clean allowed actions, capped at 100. Every change emits a `trust_update` with dimension and reason.
-
-**Trust to autonomy (tiers):**
-
-| Trust | Tier | Effect |
-|---|---|---|
-| ≥ 80 | trusted | Normal |
-| 60–79 | watched | Throttled rate limit, alerts flagged in IDE |
-| 40–59 | restricted | `risk >= medium` tools need approval; shadow simulation forced for `shell.exec` |
-| < 40 | quarantined | Halted and isolated; operator must release |
-
-**Trust propagation (Bridge):** the trust of a delegated result = `min(trust of agents in the chain) × verification_factor`, where `verification_factor` drops when claim checks contradict the result. Shown per result in the IDE.
-
----
-
-## 11. Enforcement controller (P0 core, P1 sandbox/revert)
-
-**Graduated ladder** (each step is a ledgered `enforcement` event):
-
-```text
-Log → Flag → Throttle → Require Approval → Sandbox → Revert → Halt → Quarantine
+    {
+      "id": "s1",
+      "agent": "researcher",
+      "tools": ["web.search", "web.read"]
+    },
+    {
+      "id": "s2",
+      "agent": "executor",
+      "tools": ["report.generate"]
+    }
+  ]
+}
 ```
 
-| Step | Mechanism |
-|---|---|
-| **Log** | Ledger only |
-| **Flag** | Alert in dashboard, IDE diagnostic, notification |
-| **Throttle** | Redis token bucket; lowers the agent's rate limit |
-| **Require approval** | Creates `approval_requested`; PEP blocks until `approval_resolved` (dashboard or IDE). 60 s timeout → deny |
-| **Sandbox** | Action is redirected to the Shadow Simulator (§12); result decides allow/deny |
-| **Revert** | Restore the latest snapshot for the affected paths (§12.3); emits `revert` |
-| **Halt** | `status=halted`, capability token revoked, in-flight approvals denied; SDK raises `AgentHalted` |
-| **Quarantine** | Halt plus isolation: all tools removed from the contract, network denied, session frozen, artifacts labeled, human release required |
+The verifier tracks session state.
 
-**Automatic escalation rules** (configurable): critical taint or integrity violation → halt immediately; 3 high alerts in 5 min → quarantine; trust tier transitions apply the tier effects above.
-**Human overrides:** approve, deny, halt, resume, release quarantine, edit contract (new version), all ledgered with the operator identity.
+An action outside the current plan produces:
 
----
-
-## 12. Shadow simulation, snapshots and revert (P1)
-
-### 12.1 Shadow simulator (digital twin)
-
-Triggered by the obligation `simulate_first`, the trust tier, or an explicit policy rule.
-- **Filesystem:** copy-on-write overlay (or a temp copy of the workspace) mounted into the sandbox.
-- **Shell:** run the command in a throwaway Docker container (`--network none`, read-only rootfs apart from the overlay, CPU/memory/time limits, dropped capabilities).
-- **Network:** requests go to a recorder/mock that logs the attempted calls instead of sending them.
-- **Result:** `simulation_result` with `{fs_diff, deleted_paths, network_attempts, processes, exit_code, risk_score}`.
-- **Risk evaluator:** rules plus policy (mass deletes, writes to protected paths, outbound calls to non-allowlisted hosts, privilege changes, `curl | sh`). Verdict `safe` → re-execute for real. `unsafe` → deny and alert.
-- Limits to document: the twin covers filesystem and shell effects; it does not cover side effects in external services.
-
-### 12.2 Test and verification sandbox
-
-The same sandbox runs the project's tests for the false-test-claim check (§9.6).
-
-### 12.3 Snapshots and revert
-
-Obligation `snapshot_before`: before risky writes, take a snapshot (git stash/commit ref for repos; tar or hardlink copy for non-git paths). Stored in `snapshots` with the event id. `POST /v1/snapshots/{id}/revert` restores the paths and emits `revert`. The file watcher uses the same mechanism to roll back protected-path edits it detects.
-
----
-
-## 13. Agent Bridge — SMAB (P1)
-
-Purpose: **any single-agent IDE connects and gets a full, monitored multi-agent team.**
-
-### 13.1 Components
-
-| Component | Responsibility |
-|---|---|
-| **Discovery** | Registry of available agents with capabilities, cost, current trust, load. Publishes A2A-style agent cards at `/.well-known/agent.json`. |
-| **Router** | Maps a task to a pipeline (a plan) from templates plus Planner output. |
-| **Negotiator** | Matches required capabilities to agents by capability fit, trust, load, and cost. Excludes agents with tier below the task's required tier. May re-negotiate if an agent is halted. |
-| **Aggregator** | Collects step outputs, resolves conflicts (for example Reviewer vs Coder), runs verification (hallucination checks, tests, security scan) before returning, produces the final result plus a summary of what each agent did. |
-| **Trust Propagator** | Computes result trust across the chain (§10) and attaches it to the response. |
-| **Policy Adapter** | Maps the IDE-side permissions (workspace root, allowed paths, user-approved actions) into contracts for delegated agents, so a delegated agent never has more authority than the user's IDE session. Effective permissions = intersection. |
-
-### 13.2 Protocols
-
-- **MCP server** (primary for IDEs). Tools: `delegate_task(task, constraints)`, `get_task_status(task_id)`, `get_trace(task_id)`, `list_agents()`, `cancel_task(task_id)`, `approve(approval_id, decision)`. Streams progress notifications.
-- **A2A:** agent card endpoint plus task submission for agent-to-agent clients.
-- **REST/WebSocket:** same operations for custom clients and the dashboard.
-- **LLM proxy:** for IDE agents without MCP support but with a custom base URL (§7).
-
-### 13.3 Delegation flow
-
-```text
-1  IDE agent (Cursor/Cline) calls MCP tool delegate_task("Add Redis caching with tests and security review")
-2  Bridge opens ide_session, binds workspace and permissions (Policy Adapter)
-3  Router → Planner agent produces plan_declared (§8.3)
-4  Negotiator assigns Researcher, Coder, Tester, Reviewer, Security by capability/trust
-5  Each agent runs through the SDK PEP: every action is checked, logged, signed
-6  Hallucination checks run on Coder output (packages, APIs, tests actually run, Semgrep)
-7  Violation mid-flow → controller halts the rogue agent, Negotiator reassigns the step
-8  Aggregator verifies and merges, Trust Propagator scores the result
-9  Result + diff + agents used + trust scores + trace id stream back to the IDE
-10 Replay of the whole cross-boundary trace is available from the dashboard
+``` text
+plan_ok = false
 ```
 
-### 13.4 Native agent network
+Repeated deviations increase risk.
 
-Planner, Researcher, Coder, Tester, Reviewer, Security. Each has a contract in `/contracts`, an Ed25519 identity, and LangGraph implementation (`bridge/network/`). Tools are real (workspace file ops, test runner, Semgrep) and routed through the PEP. A `scripted` mode replays deterministic behaviors for attacks and tests.
+------------------------------------------------------------------------
 
----
+# 16. Mission Drift Detector
 
-## 14. IDE Guard (P1 VS Code, P2 JetBrains)
+MVP implementation:
 
-**Architecture:** the extension is a thin client of the Dashboard API (generated TypeScript client from `openapi.yaml`) over REST and WebSocket. It does not reimplement detection. It also registers the workspace with a `ide_session`.
+### Level 1
 
-**Features:**
-- **Inline diagnostics:** 🟡 warnings / 🔴 errors on lines flagged by findings (fake package in `requirements.txt`, unresolved symbol, insecure pattern), via the VS Code Diagnostics API with code actions ("Replace with real package", "Show evidence", "Approve", "Revert change").
-- **Sidebar (webview):** agent list with trust scores and tier, live timeline, alerts, pending approvals, claim-vs-reality table, delegated-task status (from the Bridge).
-- **Status bar:** overall guard state and worst current trust.
-- **Notifications:** approval requests with Approve/Deny buttons.
-- **Commands:** halt agent, resume, revert last change, open replay in browser, verify ledger.
-- **Setup helper:** writes the MCP proxy and LLM proxy config for Cursor, Cline, Continue, and Windsurf, and installs git hooks.
+Rule-based mismatch.
 
-**JetBrains (P2):** Kotlin plugin with `ExternalAnnotator` for diagnostics, a tool window for the sidebar, notifications for approvals, using a Kotlin client generated from `openapi.yaml`. Feature parity with the VS Code extension except webview polish.
+### Level 2
 
----
+Sentence-transformer embeddings.
 
-## 15. Observability (P1)
+Embed: - mission - plan step - recent action description
 
-- OpenTelemetry traces: each session is a trace; each event carries `trace_id`/`span_id`; delegation creates child spans, so Jaeger shows the cross-boundary trace.
-- Prometheus metrics: events/s, decision latency histogram, decisions by outcome, alerts by severity, trust by agent, detector latencies, ledger lag, bus lag.
-- Grafana dashboards in `deploy/grafana/` for operations (separate from the product dashboard).
+Compute semantic similarity.
 
----
+``` text
+drift_score =
+1 - similarity(mission, action_context)
+```
 
-## 16. Forensic replay (P1)
+Only run the expensive embedding check when the action is not obviously
+valid from the current plan.
 
-- `GET /v1/sessions/{id}/replay` returns ordered events plus reconstructed state at each step (agent statuses, trust, plan state, taint labels, pending approvals).
-- **Deterministic re-evaluation:** the replayer re-runs the PDP over recorded inputs using the `policy_version` stored with each decision and compares to the recorded decision. Any mismatch is reported. **Replay accuracy = matches / total decisions** (target 100%).
-- UI: timeline scrubber, play/pause/speed, jump to alerts, step detail (inputs, facts, policy decision, evidence), taint lineage overlay, agent graph evolution, ledger proof button for any event.
+Thresholds must be configurable.
 
----
+------------------------------------------------------------------------
 
-## 17. API contract
+# 17. Behavioral Anomaly Detector
 
-All JSON, base path `/v1`, auth via JWT (humans) or capability token / signed events (agents). `openapi.yaml` is generated and drives TS and Kotlin clients.
+Maintain a rolling baseline per agent.
 
-**Agents and identity**
+Features:
 
-| Method | Path | Purpose |
-|---|---|---|
-| POST | `/agents/register` | public key + attestation → registration + token |
-| POST | `/agents/{id}/heartbeat` | attestation refresh, token refresh |
-| GET | `/agents`, `/agents/{id}` | list/detail incl. trust dimensions, tier, contract |
-| POST | `/agents/{id}/halt`, `/resume`, `/release` | operator actions |
+``` text
+calls / 10 sec
+distinct tools
+call interval
+argument length
+path depth
+error rate
+deny rate
+bytes out
+new tool flag
+new domain flag
+```
 
-**Enforcement path**
+MVP:
 
-| POST | `/enforce` | signed `tool_call_request` → Decision |
-|---|---|---|
-| POST | `/events` | signed non-decision events |
-| POST | `/llm/check` | pre-check of proposed LLM prompt/response (used by LLM proxy) |
-| GET | `/approvals`, POST `/approvals/{id}/decision` | approvals |
+1.  EWMA/z-score
+2.  Isolation Forest
 
-**Evidence**
+Example:
 
-| GET | `/events` | `since_seq`, `agent_id`, `session_id`, `type`, `source`, `limit` |
-| GET | `/alerts`, `/findings` | filters: severity, agent, type |
-| GET | `/ledger/verify`, `/ledger/proof/{seq}`, `/ledger/checkpoints` | integrity |
-| GET | `/sessions`, `/sessions/{id}`, `/sessions/{id}/replay`, `/sessions/{id}/graph`, `/sessions/{id}/taint` | forensics |
+``` text
+Normal:
+6 calls / 10 sec
 
-**Policy and contracts**
+Current:
+58 calls / 10 sec
 
-| GET/PUT | `/contracts/{agent_id}` | versioned contracts |
-| GET/POST | `/policies` | list bundles, upload and activate (runs `opa test` first) |
-| POST | `/policies/simulate` | dry-run a policy change against recorded events |
+Anomaly:
+HIGH
+```
 
-**Bridge, IDE, shadow, snapshots**
+The detector must return explainable feature contributions.
 
-| POST | `/bridge/tasks` | create task (REST equivalent of `delegate_task`) |
-| GET | `/bridge/tasks/{id}`, `/bridge/tasks/{id}/trace` | status, trace |
-| GET | `/bridge/agents` | discovery |
-| POST | `/ide/sessions` | register IDE workspace |
-| GET | `/ide/sessions/{id}/diagnostics` | findings mapped to file/line |
-| GET | `/ide/sessions/{id}/claims` | claim-vs-reality |
-| POST | `/shadow/simulate` | simulate an action |
-| GET | `/snapshots`, POST `/snapshots/{id}/revert` | snapshots/revert |
+------------------------------------------------------------------------
 
-**Ops**
+# 18. Untrusted Content / Prompt Injection
 
-| GET | `/metrics` | KPIs for the dashboard |
-| GET | `/healthz` | health |
-| POST | `/admin/reset` | demo reset |
+External content is untrusted by default.
 
-**WebSocket** `/ws/stream`: `{ "kind": "event|alert|finding|trust|agent_status|approval|bridge|checkpoint", "data": {...} }`; client may send `{ "subscribe": [...], "agent_id": "...", "session_id": "..." }`.
+Sources:
 
----
+``` text
+web page
+PDF
+retrieved document
+tool output
+external message
+memory derived from untrusted source
+```
 
-## 18. Dashboard (8 views, P0 views 1–3 and 5, P1 the rest)
+Label:
 
-Dark mode first. Next.js + React + Tailwind + shadcn/ui, 3-column layout (nav | main | detail), live over WebSocket. **Color = trust:** green > 80, yellow 60–80, orange 40–60, red < 40. Every number comes from the API; no mocks outside `scripts/seed_events.py`.
+``` text
+untrusted
+```
 
-| View | Contents | Data |
-|---|---|---|
-| **1. Live Ops** | KPI strip (events/s, blocked, alerts, decision latency p95, ledger status), agent graph (React Flow, nodes colored by trust, edges = messages/delegations/data-flow), live timeline, alert stream | `/metrics`, `/ws/stream`, `/sessions/{id}/graph` |
-| **2. Agents** | Table plus drill-down: trust dimensions chart, tier, contract viewer, violations, Halt/Resume/Release buttons, attestation status | `/agents`, `/agents/{id}` |
-| **3. Alerts** | Incident queue, severity filters, evidence panel (event, facts, policy reason, taint lineage), inline actions (approve, deny, halt, revert, acknowledge) | `/alerts`, `/approvals` |
-| **4. Replay** | Forensic player: scrubber, speed, graph evolution, step detail, replay accuracy score | `/sessions/{id}/replay` |
-| **5. Audit Ledger** | Event chain browser, Merkle checkpoints, inclusion proof viewer, **Verify** button with per-check results (chain, signatures, Merkle, anchor) | `/ledger/*` |
-| **6. IDE Guard** | Developer view: findings by file with evidence, claim-vs-reality table, package checks, test-claim results, security findings | `/ide/sessions/*`, `/findings` |
-| **7. Bridge** | Delegated task list, pipeline view (Planner → … → Security), per-agent status/trust, result trust, reassignments, cross-boundary trace link (Jaeger) | `/bridge/*` |
-| **8. Policies** | Contract editor (YAML with schema validation), Rego bundle viewer, policy simulation against recorded events, version history | `/contracts/*`, `/policies/*` |
+Detect instruction-like content such as: - instruction override - role
+change - secret extraction request - policy bypass - exfiltration
+request
 
----
+If:
 
-## 19. Deployment
+``` text
+untrusted_content
+        +
+high-risk action
+```
 
-**Docker Compose services:** `core-api`, `ledger-writer`, `detectors` (async workers), `opa`, `postgres` (+TimescaleDB), `redis`, `qdrant`, `bridge` (MCP/A2A/REST), `mcp-proxy`, `llm-proxy`, `dashboard`, `agents` (native network), `sandbox-runner`, `otel-collector`, `prometheus`, `grafana`, `jaeger`, `step-ca`. Profiles: `core` (minimum), `full`. Kubernetes (Helm chart in `deploy/`) is a P2 target with the same services.
+then set:
 
-`make run` starts the `core` profile with seeded contracts and demo agents; `make run-full` starts everything.
+``` text
+untrusted_trigger = true
+```
 
-**Security of SentinelMesh itself:** keys in a secrets volume (dev) or Vault/KMS (production note), DB app role without UPDATE/DELETE on `events`, rate-limited public ports, admin endpoints behind operator role, no real secrets in the repo.
+Policy may require approval or deny.
 
----
+------------------------------------------------------------------------
 
-## 20. Attacks, demos and evaluation
+# 19. Provenance and Taint Tracking
 
-### 20.1 Attack catalog (acceptance suite in `/attacks`, each has a test)
+Sensitive sources:
 
-| ID | Attack | Expected outcome |
-|---|---|---|
-| A1 | Prompt injection in a retrieved document makes an agent attempt `shell.exec` | Deny (contract/untrusted-trigger), high alert, trust drop |
-| A2 | Forged event signed with a wrong key | Rejected, critical `forged_event` |
-| A3 | Delegation privilege escalation (agent asked to read `.env`) | Deny (delegation intersection), high |
-| A4 | Secret exfiltration: Agent A reads secret, Agent B POSTs it externally | Deny (taint), critical, halt, lineage shown |
-| A5 | Ping-pong loop between two agents | Collusion alert, throttle, quarantine on repeat |
-| A6 | Goal drift (plan says summarize docs, agent starts outbound calls) | Drift + plan deviation alert, deny by contract |
-| A7 | Burst of 50 calls in 5 s | Anomaly alert, throttle |
-| A8 | Hand-edit a ledger row; separately, rewrite the whole DB consistently | Verify fails (chain/signature); full rewrite caught by external anchor mismatch |
-| A9 | IDE agent adds a nonexistent package | Blocked/flagged (fake package), red diagnostic |
-| A10 | Agent calls a non-existent API/symbol | Flagged by symbol resolution |
-| A11 | Agent claims "all tests pass" when they fail | Claim contradicted after real test run, high finding |
-| A12 | Agent writes hardcoded secret / SQL injection | Semgrep/Bandit finding, flagged or blocked at commit |
-| A13 | IDE agent edits `.env` | Blocked by MCP proxy/PEP; if bypassed, detected by watcher and reverted |
-| A14 | Two agents relay a secret through paraphrased messages | Taint n-gram/semantic detection plus collusion motif |
-| A15 | Rogue agent mid-Bridge task | Halt, step reassigned, task completes, trace preserved |
-| A16 | Risky shell command (`rm -rf`, `curl \| sh`) | Shadow simulation unsafe → deny |
-| A17 | Memory poisoning: stored document plants an instruction | Untrusted provenance flagged, action requires approval/deny |
-| A18 | Attestation drift: agent source modified mid-run | `attestation_drift` critical, halt |
-| A19 | Replay accuracy | Re-evaluation matches recorded decisions 100% |
+``` text
+.env
+API keys
+tokens
+PII
+secret-labelled tool output
+high-entropy credentials
+```
 
-**Benign scenarios (B1–B20):** normal flows across all three demo networks and the Bridge. Expected: no deny/halt, measured for false positives.
+When an agent reads sensitive data:
 
-### 20.2 Demo scenarios
+``` text
+SECRET
+  |
+  v
+Agent A
+  |
+  v
+Message
+  |
+  v
+Agent B
+  |
+  v
+external.post
+```
 
-1. **Multi-agent attack (PS002 core):** Planner → Retriever → Executor; injection blocked (A1), exfiltration halted (A4), collusion quarantined (A5), tamper check (A8), replay.
-2. **IDE hallucination:** Cline/Cursor proposes a fake package (A9), fake API (A10), false test claim (A11), `.env` edit blocked (A13); sidebar shows claim-vs-reality.
-3. **Collusion:** two agents loop or relay (A5, A14); graph detector flags; quarantine; replay.
-4. **Agent Bridge (the showpiece):** in Cursor ask "Add Redis caching with tests and security review" → `delegate_task` → Planner, Coder, Tester, Reviewer, Security run under monitoring → hallucination checks → mid-flow violation (A15) halts a rogue agent and the step is reassigned → results stream back with agents used, trust scores, and audit trace → replay the cross-boundary trace.
+The taint label propagates.
 
-### 20.3 Metrics (produced by `make benchmark` into `benchmark_results.json`)
+Sensitive sinks:
 
-| Metric | Target | Method |
-|---|---|---|
-| Detection latency | < 500 ms | event ts → alert ts |
-| Enforcement latency | < 1 s | alert → halt/deny applied |
-| Inline decision latency p95 | < 100 ms | PDP timings |
-| False positive rate | < 10% | benign scenarios flagged/denied |
-| Attack detection rate | > 90% | A1–A19 labelled outcomes |
-| Hallucination detection rate | > 85% | seeded set: fake packages, fake APIs, false claims, insecure snippets |
-| Shadow simulation catch rate | report | seeded risky commands |
-| Overhead | < 15% | task time guarded vs unguarded |
-| Audit completeness | 100% | signed events / total events |
-| Replay accuracy | 100% | re-evaluation matches |
-| Ledger verify after clean run | 100% | all four checks pass |
+``` text
+external.post
+git.push
+shell.exec
+unapproved fs.write
+external LLM prompt
+agent-to-agent message
+```
 
-The benchmark is only credible if it runs the real pipeline over labelled data; the harness never mocks decisions.
+If a tainted value reaches a forbidden sink:
 
----
+``` text
+taint_hit = true
+severity = critical
+decision = deny
+```
 
-## 21. Threat model and PS002 coverage
+The dashboard must display:
 
-| Threat | Detection | Enforcement | Test |
-|---|---|---|---|
-| Prompt injection / tool misuse | Contract, provenance, injection score | Deny / approval | A1, A17 |
-| Identity spoofing, forged events | Signatures, hash chain | Reject, alert | A2 |
-| Agent code tampering | Attestation drift | Halt | A18 |
-| Privilege escalation via delegation | Delegation intersection | Deny | A3 |
-| Data exfiltration | Taint tracking | Deny, halt | A4, A14 |
-| Collusion / loops | Graph motifs (+GNN) | Throttle, quarantine | A5 |
-| Goal drift | Plan verifier, semantic drift | Flag, deny | A6 |
-| Faulty / abusive behavior | Anomaly ensemble | Throttle | A7 |
-| Log tampering / repudiation | Hash chain, Merkle, external anchor | Verify fails | A8 |
-| Hallucinated dependencies/APIs/claims | Hallucination checks | Block, flag | A9–A12 |
-| Dangerous commands | Shadow simulation | Deny | A16 |
-| Unauthorized file changes | PEP, watcher, snapshots | Block / revert | A13 |
-| Rogue agent in a delegated task | Controller + Bridge | Halt, reassign | A15 |
+``` text
+source -> agent -> agent -> sink
+```
 
-Every PS002 requirement in §1 maps to a row here and to at least one passing test; a requirement is marked covered only when its test passes in CI.
+------------------------------------------------------------------------
 
----
+# 20. Trust Engine
 
-## 22. Workstreams (2 to 4 people) and interfaces
+Every agent has four dimensions:
 
-| Workstream | Owns |
-|---|---|
-| **W1 Integrity core** | `core/schemas`, event_bus, identity, ledger (Merkle, anchor), contracts, policy + `/policies` (OPA), pdp, enforcement, trust, snapshots, API/WebSocket |
-| **W2 Detectors and evaluation** | verifier, anomaly, drift, provenance, collusion, injection, `ml/`, `attacks/`, `benchmark/`, replay re-evaluation |
-| **W3 Instrumentation, Bridge, hallucination** | SDKs, MCP/LLM proxies, shell wrapper, watcher, git hooks, hallucination checks, shadow simulator, `bridge/` + native agent network |
-| **W4 Frontend and IDE** | Dashboard (8 views), VS Code extension, JetBrains plugin, generated clients, docs, demo video, Grafana |
+``` text
+compliance
+integrity
+consistency
+claim_accuracy
+```
 
-**Two people:** Person A = W1 + W2; Person B = W3 + W4. **Three:** merge W4 into whichever of W1–W3 is lightest.
+Initial:
 
-**Contracts between workstreams (change only via this file + PR to both owners):**
-1. `core/schemas` (event, decision, finding, alert) and the event hashing/signing rules in §5.2.
-2. `openapi.yaml` and the WebSocket message kinds in §17.
-3. Contract YAML schema and the OPA input/output shape in §8.
-4. The `EventBus`, `PolicyEngine`, `AnomalyModel`, `VectorStore`, `IdentityProvider` interfaces.
+``` text
+100 / 100 / 100 / 100
+```
 
-**Dependency order of work:** (1) schemas, identity, ledger, bus → (2) API, SDK, PDP + OPA, enforcement, a fake agent, Live Ops view → (3) demo network, attacks A1–A3/A8, trust, taint → (4) remaining detectors, replay, Alerts/Agents/Ledger/Replay views → (5) MCP/LLM proxies, shell wrapper, watcher, hooks, hallucination checks, shadow simulator, snapshots/revert → (6) Bridge and native network, IDE Guard (VS Code), Bridge/IDE/Policies views → (7) P2 backends (GNN, autoencoder, SPIRE, NATS/Kafka, Cedar, JetBrains, K8s), benchmark, docs, demo recording.
+MVP formula:
 
----
+``` text
+trust =
+0.35 * compliance
++ 0.25 * integrity
++ 0.20 * consistency
++ 0.20 * claim_accuracy
+```
 
-## 23. Rules for coding agents
+Clamp to 0..100.
 
-1. Follow this file, `core/schemas`, and `openapi.yaml` exactly. To change an interface, edit this file in the same commit and tell the other owners.
-2. **No fake functionality.** No hardcoded alerts, decisions, findings, or metrics outside `scripts/seed_events.py`. Behavior must change when a contract, policy, or detector input changes.
-3. Code against interfaces; vendor choices live in adapters.
-4. Default deny. Fail closed for high-risk tools.
-5. Work inside your workstream's directories. Small tasks, small commits, commit after every working step.
-6. Every component ships with unit tests; every attack and benign scenario has an automated test; Rego policies have `opa test` coverage.
-7. Never commit real secrets. Demo secrets must be obviously fake.
-8. Label every control preventive or detective in code docs and UI.
-9. When you finish or stop, update `PROGRESS.md`: done, in progress, next, known bugs.
+Severity penalties:
 
----
+``` text
+LOW       -5
+MEDIUM   -15
+HIGH     -30
+CRITICAL -50
+```
 
-## 24. Definition of done
+Recovery:
 
-- [ ] `make run` (core) and `make run-full` start cleanly; seeded demo works end to end
-- [ ] Every row in §21 has a passing automated test and appears live in a demo
-- [ ] A1–A19 produce expected outcomes through the real pipeline; B1–B20 produce no false denials beyond the target rate
-- [ ] Ledger verify passes on a clean run and fails on tamper and full-rewrite attacks
-- [ ] Halt, resume, quarantine release, approvals, revert, and snapshots work from dashboard and IDE
-- [ ] MCP proxy and LLM proxy work with at least one real IDE agent (Cline or Cursor)
-- [ ] Bridge `delegate_task` runs the six-agent pipeline with a mid-flow halt and reassignment
-- [ ] VS Code extension shows diagnostics, sidebar, approvals; JetBrains plugin (P2) shows diagnostics and tool window
-- [ ] Replay view re-evaluates decisions with 100% accuracy
-- [ ] `make benchmark` writes `benchmark_results.json` and the README shows the table
-- [ ] README has architecture diagram, preventive/detective table, threat model, results, demo video link
+``` text
++1 per 10 consecutive clean allowed actions
+```
+
+Trust tiers:
+
+``` text
+80-100  TRUSTED
+60-79   WATCHED
+40-59   RESTRICTED
+0-39    QUARANTINED
+```
+
+------------------------------------------------------------------------
+
+# 21. Enforcement Controller
+
+Use:
+
+``` text
+LOG
+ ↓
+FLAG
+ ↓
+THROTTLE
+ ↓
+REQUIRE APPROVAL
+ ↓
+SANDBOX
+ ↓
+REVERT
+ ↓
+HALT
+ ↓
+QUARANTINE
+```
+
+Rules:
+
+### Low
+
+Log.
+
+### Medium
+
+Alert + throttle.
+
+### High
+
+Approval or sandbox.
+
+### Critical
+
+Block + trust penalty.
+
+### Critical security events
+
+Quarantine immediately.
+
+Examples:
+
+``` text
+Secret exfiltration -> quarantine
+Forged event -> quarantine
+Unauthorized sensitive export -> block/approval
+Mission drift -> flag/block depending on risk
+Burst anomaly -> throttle
+```
+
+Every enforcement action creates an event.
+
+------------------------------------------------------------------------
+
+# 22. Human Approval
+
+Approval object:
+
+``` json
+{
+  "id": "approval-001",
+  "agent_id": "executor-01",
+  "tool": "external.post",
+  "reason": "External network request",
+  "risk": "high",
+  "expires_in": 60
+}
+```
+
+UI:
+
+``` text
+HIGH RISK ACTION
+
+Executor-01 wants to call:
+external.post
+
+Destination:
+api.example.com
+
+Reason:
+Upload generated report
+
+[ APPROVE ] [ DENY ]
+```
+
+Timeout:
+
+``` text
+60 seconds -> DENY
+```
+
+Approval decisions must be ledgered.
+
+------------------------------------------------------------------------
+
+# 23. Shadow Simulator
+
+For high-risk shell/filesystem operations:
+
+``` text
+Action
+  |
+  v
+Temporary sandbox
+  |
+  v
+Execute safely
+  |
+  v
+Collect:
+- file diff
+- deleted paths
+- network attempts
+- process activity
+- exit code
+  |
+  v
+Risk evaluator
+  |
+  +--> SAFE
+  |
+  +--> UNSAFE
+```
+
+MVP Docker configuration:
+
+``` text
+--network none
+read-only root filesystem
+temporary writable overlay
+CPU limit
+memory limit
+time limit
+dropped capabilities
+```
+
+The simulator does not guarantee safety for external side effects. State
+this clearly.
+
+------------------------------------------------------------------------
+
+# 24. Snapshot and Revert
+
+Before medium/high-risk writes:
+
+``` text
+snapshot_before
+```
+
+Store:
+
+``` text
+snapshot_id
+event_id
+workspace/path metadata
+git commit or archive reference
+```
+
+If action is later determined unsafe:
+
+``` text
+POST /snapshots/{id}/revert
+```
+
+Emit:
+
+``` text
+revert event
+```
+
+------------------------------------------------------------------------
+
+# 25. Hallucination / Claim Verification
+
+Agents may claim:
+
+``` text
+"Package installed."
+"All tests passed."
+"File created."
+"API exists."
+"Security issue fixed."
+```
+
+Convert claims into structured events.
+
+Checks:
+
+### Fake package
+
+Check package registry.
+
+### Fake API
+
+Check repository/LSP/static analysis.
+
+### Fake file
+
+Check filesystem/git tree.
+
+### False test claim
+
+Actually execute tests.
+
+### Insecure code
+
+Run Semgrep/Bandit.
+
+Claim result:
+
+``` json
+{
+  "claim": "all tests pass",
+  "verdict": "contradicted",
+  "evidence": "4 tests failed",
+  "confidence": 0.99
+}
+```
+
+False claims reduce `claim_accuracy`.
+
+------------------------------------------------------------------------
+
+# 26. Multi-Agent Delegation
+
+Every delegation must carry:
+
+``` text
+delegator
+delegate
+task
+required_capabilities
+delegation_chain
+trust
+permissions
+```
+
+Effective permission:
+
+``` text
+effective_permissions =
+user_permissions
+∩
+delegator_permissions
+∩
+delegate_permissions
+```
+
+Never allow delegation to increase privilege.
+
+Example:
+
+``` text
+Planner
+  |
+  | "Read customer DB"
+  v
+Researcher
+
+If Planner cannot read customer DB,
+Researcher cannot gain that permission through delegation.
+```
+
+------------------------------------------------------------------------
+
+# 27. Collusion Detection --- MVP
+
+Do not use a GNN initially.
+
+Build a NetworkX graph:
+
+``` text
+nodes = agents
+edges = messages/delegations/data flow
+```
+
+Detect:
+
+### Ping-pong
+
+``` text
+A -> B -> A -> B -> A
+```
+
+### Relay
+
+``` text
+A -> B -> C -> external
+```
+
+### Delegation widening
+
+Delegate has broader authority than intended.
+
+### Burst fan-out
+
+One agent suddenly contacts many agents.
+
+### Mutual approval
+
+Agents repeatedly approve each other's risky actions.
+
+These become async findings.
+
+------------------------------------------------------------------------
+
+# 28. Cryptographic Evidence Ledger
+
+Canonical event:
+
+``` json
+{
+  "id": "uuid",
+  "seq": 123,
+  "timestamp": "...",
+  "agent_id": "researcher-01",
+  "session_id": "sess-001",
+  "type": "tool_call_request",
+  "payload": {},
+  "decision": {},
+  "policy_version": "...",
+  "content_hash": "...",
+  "prev_hash": "...",
+  "hash": "...",
+  "agent_signature": "...",
+  "core_signature": "..."
+}
+```
+
+### Event hashing
+
+1.  Build event without:
+    -   seq
+    -   prev_hash
+    -   hash
+    -   signatures
+2.  Canonical JSON.
+3.  SHA-256 -\> `content_hash`.
+4.  Agent signs `content_hash`.
+5.  Ledger assigns `seq` and `prev_hash`.
+6.  Compute event hash.
+7.  Core signs event hash.
+
+------------------------------------------------------------------------
+
+# 29. Merkle Checkpoints
+
+Every:
+
+``` text
+100 events
+OR
+30 seconds
+```
+
+create:
+
+``` text
+Merkle root
+```
+
+Checkpoint:
+
+``` json
+{
+  "from_seq": 1,
+  "to_seq": 100,
+  "merkle_root": "...",
+  "timestamp": "..."
+}
+```
+
+Store checkpoint in PostgreSQL.
+
+Provide inclusion proof:
+
+``` text
+event -> Merkle path -> root
+```
+
+------------------------------------------------------------------------
+
+# 30. Blockchain Trust Anchor
+
+Blockchain is NOT the runtime database.
+
+Do NOT write every event to blockchain.
+
+Architecture:
+
+``` text
+100 events
+    |
+    v
+Merkle root
+    |
+    v
+Blockchain transaction
+```
+
+Store:
+
+``` text
+chain_id
+transaction_hash
+merkle_root
+checkpoint_range
+timestamp
+```
+
+The blockchain proves that a checkpoint existed at/around the anchoring
+time and that the recorded root can be independently compared.
+
+For the hackathon, use a low-cost EVM-compatible testnet.
+
+The runtime must still work if the blockchain is temporarily
+unavailable. Queue/retry anchors asynchronously.
+
+------------------------------------------------------------------------
+
+# 31. Ledger Verification
+
+`GET /api/v1/ledger/verify`
+
+Check:
+
+``` text
+✓ event hashes
+✓ hash-chain continuity
+✓ agent signatures
+✓ core signatures
+✓ Merkle roots
+✓ checkpoint consistency
+✓ blockchain anchor consistency
+```
+
+Response:
+
+``` json
+{
+  "ok": true,
+  "checked": 1842,
+  "checks": {
+    "chain": true,
+    "signatures": true,
+    "merkle": true,
+    "anchor": true
+  }
+}
+```
+
+------------------------------------------------------------------------
+
+# 32. Forensic Replay
+
+A session consists of ordered events.
+
+Replay reconstructs:
+
+``` text
+agent state
+trust
+plan state
+taint labels
+approvals
+decisions
+alerts
+enforcement
+```
+
+UI:
+
+``` text
+10:31:01  Agent registered
+10:31:03  Plan declared
+10:31:04  Web page read
+10:31:05  Injection detected
+10:31:06  DB export requested
+10:31:06  DENIED
+10:31:06  Trust 94 -> 64
+10:31:07  QUARANTINED
+```
+
+Replay must use recorded policy versions for deterministic
+re-evaluation.
+
+------------------------------------------------------------------------
+
+# 33. Dashboard
+
+## 33.1 Live Operations
+
+Show:
+
+``` text
+Events/sec
+Blocked actions
+Alerts
+Decision p95
+Active agents
+Quarantined agents
+Ledger integrity
+```
+
+Graph:
+
+``` text
+Planner -> Researcher -> Executor
+```
+
+Node color represents trust tier.
+
+------------------------------------------------------------------------
+
+## 33.2 Agent Detail
+
+Show:
+
+``` text
+Agent
+Role
+Status
+Trust
+Compliance
+Integrity
+Consistency
+Claim Accuracy
+Mission
+Capabilities
+Contract
+Recent actions
+Violations
+```
+
+Actions:
+
+``` text
+Halt
+Resume
+Quarantine
+Release
+```
+
+------------------------------------------------------------------------
+
+## 33.3 Incident Detail
+
+Show:
+
+``` text
+Severity
+Agent
+Action
+Reason
+Policy facts
+Mission mismatch
+Plan mismatch
+Provenance
+Taint lineage
+Evidence
+Trust change
+Enforcement
+```
+
+------------------------------------------------------------------------
+
+## 33.4 Replay
+
+Show:
+
+``` text
+timeline scrubber
+play/pause
+speed
+agent graph
+event details
+alerts
+trust changes
+taint path
+```
+
+------------------------------------------------------------------------
+
+## 33.5 Audit Ledger
+
+Show:
+
+``` text
+event sequence
+event hash
+previous hash
+signature
+Merkle checkpoint
+inclusion proof
+blockchain anchor
+```
+
+Button:
+
+``` text
+VERIFY LEDGER
+```
+
+------------------------------------------------------------------------
+
+# 34. API
+
+Base path:
+
+``` text
+/api/v1
+```
+
+## Agents
+
+``` http
+POST   /agents/register
+POST   /agents/{id}/heartbeat
+GET    /agents
+GET    /agents/{id}
+POST   /agents/{id}/halt
+POST   /agents/{id}/resume
+POST   /agents/{id}/release
+```
+
+## Enforcement
+
+``` http
+POST   /enforce
+POST   /events
+POST   /llm/check
+```
+
+## Approvals
+
+``` http
+GET    /approvals
+POST   /approvals/{id}/decision
+```
+
+## Alerts
+
+``` http
+GET    /alerts
+GET    /findings
+```
+
+## Ledger
+
+``` http
+GET    /ledger/events
+GET    /ledger/verify
+GET    /ledger/checkpoints
+GET    /ledger/proof/{seq}
+```
+
+## Sessions
+
+``` http
+GET    /sessions
+GET    /sessions/{id}
+GET    /sessions/{id}/replay
+GET    /sessions/{id}/graph
+GET    /sessions/{id}/taint
+```
+
+## Contracts
+
+``` http
+GET    /contracts/{agent_id}
+PUT    /contracts/{agent_id}
+```
+
+## Policies
+
+``` http
+GET    /policies
+POST   /policies
+POST   /policies/simulate
+```
+
+## Bridge
+
+``` http
+POST   /bridge/tasks
+GET    /bridge/tasks/{id}
+GET    /bridge/tasks/{id}/trace
+GET    /bridge/agents
+POST   /bridge/tasks/{id}/cancel
+```
+
+## Sandbox
+
+``` http
+POST   /shadow/simulate
+```
+
+## Snapshots
+
+``` http
+GET    /snapshots
+POST   /snapshots/{id}/revert
+```
+
+## WebSocket
+
+``` text
+/ws/stream
+```
+
+Events:
+
+``` text
+event
+alert
+finding
+trust
+agent_status
+approval
+bridge
+checkpoint
+enforcement
+```
+
+------------------------------------------------------------------------
+
+# 35. PostgreSQL Data Model
+
+Core tables:
+
+``` text
+agents
+agent_attestations
+contracts
+policy_bundles
+sessions
+events
+alerts
+findings
+trust_history
+approvals
+snapshots
+taint_registry
+bridge_tasks
+checkpoints
+blockchain_anchors
+```
+
+Important rules:
+
+### events
+
+The application role must not have UPDATE/DELETE permissions.
+
+### contracts
+
+Versioned.
+
+### policy_bundles
+
+Versioned and hashed.
+
+### trust_history
+
+Append-only changes:
+
+``` text
+agent_id
+old_score
+new_score
+dimension
+reason
+event_id
+timestamp
+```
+
+------------------------------------------------------------------------
+
+# 36. Repository Structure
+
+``` text
+aegismesh/
+│
+├── ARCHITECTURE.md
+├── README.md
+├── .env.example
+├── docker-compose.yml
+├── Makefile
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── config.py
+│   │   │
+│   │   ├── api/
+│   │   │   ├── agents.py
+│   │   │   ├── enforcement.py
+│   │   │   ├── alerts.py
+│   │   │   ├── ledger.py
+│   │   │   ├── replay.py
+│   │   │   ├── policies.py
+│   │   │   ├── contracts.py
+│   │   │   ├── approvals.py
+│   │   │   └── websocket.py
+│   │   │
+│   │   ├── schemas/
+│   │   │   ├── agent.py
+│   │   │   ├── event.py
+│   │   │   ├── decision.py
+│   │   │   ├── finding.py
+│   │   │   ├── alert.py
+│   │   │   ├── contract.py
+│   │   │   └── plan.py
+│   │   │
+│   │   ├── identity/
+│   │   ├── contracts/
+│   │   ├── policy/
+│   │   ├── pdp/
+│   │   ├── enforcement/
+│   │   ├── trust/
+│   │   ├── provenance/
+│   │   ├── drift/
+│   │   ├── anomaly/
+│   │   ├── hallucination/
+│   │   ├── shadow/
+│   │   ├── snapshots/
+│   │   ├── replay/
+│   │   ├── ledger/
+│   │   ├── blockchain/
+│   │   ├── bridge/
+│   │   └── db/
+│   │
+│   ├── tests/
+│   └── requirements.txt
+│
+├── agents/
+│   ├── common/
+│   │   ├── sdk.py
+│   │   ├── signing.py
+│   │   └── client.py
+│   ├── planner/
+│   ├── researcher/
+│   └── executor/
+│
+├── policies/
+│   ├── base.rego
+│   ├── researcher.rego
+│   ├── executor.rego
+│   └── tests/
+│
+├── contracts/
+│   ├── planner.yaml
+│   ├── researcher.yaml
+│   └── executor.yaml
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── lib/
+│   └── types/
+│
+├── attacks/
+│   ├── prompt_injection.py
+│   ├── secret_exfiltration.py
+│   ├── mission_drift.py
+│   └── rogue_agent.py
+│
+├── demos/
+│   └── primary_attack/
+│
+└── docs/
+```
+
+------------------------------------------------------------------------
+
+# 37. Interfaces
+
+Build interfaces before vendor-specific implementations.
+
+## EventBus
+
+``` python
+class EventBus(Protocol):
+    async def publish(topic: str, event: Event) -> None: ...
+    async def subscribe(topic: str, group: str): ...
+```
+
+Default:
+
+``` text
+Redis Streams
+```
+
+------------------------------------------------------------------------
+
+## PolicyEngine
+
+``` python
+class PolicyEngine(Protocol):
+    async def evaluate(context: PolicyContext) -> Decision: ...
+```
+
+Default:
+
+``` text
+OPA
+```
+
+------------------------------------------------------------------------
+
+## AnomalyModel
+
+``` python
+class AnomalyModel(Protocol):
+    def score(self, features: dict) -> AnomalyResult: ...
+```
+
+Default:
+
+``` text
+EWMA
+IsolationForest
+```
+
+------------------------------------------------------------------------
+
+## IdentityProvider
+
+``` python
+class IdentityProvider(Protocol):
+    def register(...)
+    def verify(...)
+    def revoke(...)
+```
+
+Default:
+
+``` text
+Ed25519 + JWT
+```
+
+------------------------------------------------------------------------
+
+## Ledger
+
+``` python
+class Ledger(Protocol):
+    async def append(event: Event) -> StoredEvent: ...
+    async def verify() -> VerificationResult: ...
+    async def proof(seq: int) -> MerkleProof: ...
+```
+
+------------------------------------------------------------------------
+
+## BlockchainAnchor
+
+``` python
+class BlockchainAnchor(Protocol):
+    async def anchor(merkle_root: str) -> AnchorResult: ...
+    async def verify(anchor: Anchor) -> bool: ...
+```
+
+The blockchain implementation must never be imported directly by the
+runtime policy code.
+
+------------------------------------------------------------------------
+
+# 38. Event Types
+
+MVP:
+
+``` text
+agent_registered
+heartbeat
+attestation
+plan_declared
+plan_step
+tool_call_request
+decision
+tool_call_result
+message
+delegation
+finding
+alert
+enforcement
+trust_update
+approval_requested
+approval_resolved
+simulation_result
+snapshot
+revert
+bridge_task
+bridge_delegation
+bridge_result
+checkpoint
+blockchain_anchor
+```
+
+------------------------------------------------------------------------
+
+# 39. Primary Attack Scenarios
+
+These must be real automated demos.
+
+## A1 --- Prompt Injection
+
+``` text
+Malicious document
+  ->
+Researcher reads it
+  ->
+Injected instruction
+  ->
+Sensitive tool request
+  ->
+BLOCK
+```
+
+Expected: - untrusted label - policy violation - alert - trust
+reduction - quarantine if critical
+
+------------------------------------------------------------------------
+
+## A2 --- Secret Exfiltration
+
+``` text
+Researcher reads secret
+  ->
+secret taint
+  ->
+Executor receives derived data
+  ->
+external.post
+  ->
+BLOCK
+```
+
+Expected: - taint lineage - critical alert - quarantine
+
+------------------------------------------------------------------------
+
+## A3 --- Mission Drift
+
+``` text
+Mission:
+Research Redis
+
+Agent:
+research
+research
+database.export
+external.post
+```
+
+Expected: - drift detection - plan deviation - block
+
+------------------------------------------------------------------------
+
+## A4 --- Rogue Agent
+
+``` text
+Agent becomes malicious
+  ->
+requests forbidden tool
+  ->
+quarantine
+  ->
+reassign remaining task
+  ->
+other agents continue
+```
+
+This is the primary presentation demo.
+
+------------------------------------------------------------------------
+
+# 40. Demo Script
+
+The final demo should be deterministic.
+
+## Phase 1 --- Healthy
+
+``` text
+Planner       97
+Researcher    95
+Executor      96
+```
+
+Task:
+
+``` text
+"Research Redis caching and produce a report."
+```
+
+All actions allowed.
+
+------------------------------------------------------------------------
+
+## Phase 2 --- Attack
+
+Researcher consumes malicious content.
+
+It attempts:
+
+``` text
+database.export(customers)
+```
+
+------------------------------------------------------------------------
+
+## Phase 3 --- Detection
+
+Dashboard displays:
+
+``` text
+CRITICAL THREAT
+
+Policy violation
+Mission drift
+Untrusted trigger
+Sensitive data access
+```
+
+------------------------------------------------------------------------
+
+## Phase 4 --- Containment
+
+``` text
+Researcher
+95 -> 27
+
+Status:
+QUARANTINED
+```
+
+Planner and Executor remain active.
+
+------------------------------------------------------------------------
+
+## Phase 5 --- Evidence
+
+Open incident.
+
+Show:
+
+``` text
+source
+ ->
+researcher
+ ->
+database.export
+ ->
+blocked
+```
+
+------------------------------------------------------------------------
+
+## Phase 6 --- Replay
+
+Replay timeline.
+
+------------------------------------------------------------------------
+
+## Phase 7 --- Verification
+
+Click:
+
+``` text
+VERIFY LEDGER
+```
+
+Show:
+
+``` text
+Hash chain       ✓
+Signatures       ✓
+Merkle proof     ✓
+Blockchain       ✓
+```
+
+This is the complete end-to-end story.
+
+------------------------------------------------------------------------
+
+# 41. Team Structure --- Two Developers
+
+Both developers push to `main`.
+
+Because both are using the same branch, minimize simultaneous edits to
+the same files.
+
+## Developer 1 --- Core / Security
+
+Own:
+
+``` text
+backend/app/
+policies/
+contracts/
+agents/common/
+agents/planner/
+agents/researcher/
+agents/executor/
+ledger/
+identity/
+enforcement/
+trust/
+provenance/
+drift/
+anomaly/
+```
+
+Responsibilities:
+
+-   event schema
+-   agent identity
+-   PEP
+-   OPA
+-   trust
+-   enforcement
+-   detectors
+-   ledger
+-   blockchain anchor
+-   agent runtime
+
+------------------------------------------------------------------------
+
+## Developer 2 --- Product / UI / Demo
+
+Own:
+
+``` text
+frontend/
+attacks/
+demos/
+docs/
+```
+
+Responsibilities:
+
+-   dashboard
+-   live WebSocket UI
+-   agent graph
+-   incident view
+-   replay UI
+-   ledger verification UI
+-   demo attack scripts
+-   frontend integration
+-   presentation/demo tooling
+
+Developer 2 may modify backend API schemas when required, but should
+coordinate before changing shared contracts.
+
+------------------------------------------------------------------------
+
+# 42. Shared Files
+
+These require coordination:
+
+``` text
+ARCHITECTURE.md
+README.md
+docker-compose.yml
+openapi/schema
+backend/app/schemas/*
+```
+
+Before modifying a shared interface:
+
+1.  Check current `main`.
+2.  Make the smallest change possible.
+3.  Tell the other developer.
+4.  Commit immediately.
+5.  Push.
+6.  Other developer pulls before continuing.
+
+------------------------------------------------------------------------
+
+# 43. Git Rules
+
+Both developers push directly to `main`.
+
+### MUST
+
+``` bash
+git pull --rebase origin main
+```
+
+before starting work.
+
+After completing a small logical unit:
+
+``` bash
+git add .
+git commit -m "feat: ..."
+git pull --rebase origin main
+git push origin main
+```
+
+### NEVER
+
+``` text
+git push --force
+```
+
+### NEVER
+
+Rewrite another developer's work.
+
+### NEVER
+
+Keep large uncommitted changes for hours.
+
+### Prefer
+
+Small commits:
+
+``` text
+feat: add agent registration
+feat: add event signing
+feat: add policy enforcement
+feat: add trust engine
+feat: add live agent dashboard
+```
+
+------------------------------------------------------------------------
+
+# 44. Antigravity Coding Rules
+
+Antigravity/AI coding agents must obey these rules.
+
+## Rule 1 --- Read this file first
+
+Before implementing anything:
+
+``` text
+ARCHITECTURE.md
+```
+
+is the source of truth.
+
+------------------------------------------------------------------------
+
+## Rule 2 --- No fake functionality
+
+Do not:
+
+``` python
+return {"trust": 95}
+```
+
+unless that value is actually calculated.
+
+Do not hardcode:
+
+``` text
+"Threat detected!"
+```
+
+The UI must consume real API data.
+
+------------------------------------------------------------------------
+
+## Rule 3 --- No mock security decisions
+
+Security decisions must come from:
+
+``` text
+contract
++
+policy
++
+facts
++
+risk
+```
+
+Demo attack scripts may generate deterministic inputs, but the security
+engine must independently make the decision.
+
+------------------------------------------------------------------------
+
+## Rule 4 --- Default deny
+
+Unknown:
+
+``` text
+agent
+tool
+path
+command
+domain
+delegation
+```
+
+must not automatically receive permission.
+
+------------------------------------------------------------------------
+
+## Rule 5 --- Preserve interfaces
+
+Implement against:
+
+``` text
+PolicyEngine
+EventBus
+Ledger
+IdentityProvider
+AnomalyModel
+BlockchainAnchor
+```
+
+Do not tightly couple core logic to Redis, OPA, or a specific blockchain
+SDK.
+
+------------------------------------------------------------------------
+
+## Rule 6 --- Tests before "done"
+
+Every security feature must have at least:
+
+``` text
+1 positive test
+1 negative test
+```
+
+Example:
+
+``` text
+allowed database read -> ALLOW
+unauthorized database export -> DENY
+```
+
+------------------------------------------------------------------------
+
+# 45. Implementation Order
+
+Do not build everything in parallel.
+
+## Phase 1 --- Foundation
+
+``` text
+Repository
+Docker Compose
+Postgres
+Redis
+FastAPI
+Pydantic schemas
+```
+
+------------------------------------------------------------------------
+
+## Phase 2 --- Identity + Events
+
+``` text
+Agent registration
+Ed25519
+Capability JWT
+Event schema
+Event signing
+Hash chain
+```
+
+------------------------------------------------------------------------
+
+## Phase 3 --- Enforcement
+
+``` text
+Mission contracts
+OPA
+PDP
+PEP
+Allow/deny
+```
+
+------------------------------------------------------------------------
+
+## Phase 4 --- Trust
+
+``` text
+Trust engine
+Trust tiers
+Alerts
+Enforcement controller
+Quarantine
+```
+
+------------------------------------------------------------------------
+
+## Phase 5 --- Agents
+
+``` text
+Planner
+Researcher
+Executor
+```
+
+Make the normal workflow work end-to-end.
+
+------------------------------------------------------------------------
+
+## Phase 6 --- Detection
+
+``` text
+Mission drift
+Untrusted content
+Taint
+Behavior anomaly
+```
+
+------------------------------------------------------------------------
+
+## Phase 7 --- Evidence
+
+``` text
+Merkle
+Proof
+Replay
+Blockchain anchor
+```
+
+------------------------------------------------------------------------
+
+## Phase 8 --- Dashboard
+
+``` text
+Live Ops
+Agents
+Alerts
+Replay
+Ledger
+```
+
+------------------------------------------------------------------------
+
+## Phase 9 --- Attack Suite
+
+``` text
+Prompt injection
+Secret exfiltration
+Mission drift
+Rogue agent
+```
+
+------------------------------------------------------------------------
+
+## Phase 10 --- Polish
+
+Only after the vertical slice works:
+
+``` text
+Animations
+better graphs
+better evidence panels
+demo mode
+metrics
+presentation polish
+```
+
+------------------------------------------------------------------------
+
+# 46. Definition of Done
+
+The MVP is considered complete only when this scenario works without
+manually editing the database:
+
+``` text
+1. Start Docker Compose.
+
+2. Start AegisMesh.
+
+3. Register Planner, Researcher and Executor.
+
+4. Create a mission.
+
+5. Planner generates a plan.
+
+6. Researcher performs valid actions.
+
+7. Valid actions are allowed.
+
+8. Researcher consumes malicious content.
+
+9. Researcher attempts forbidden sensitive action.
+
+10. PEP intercepts it.
+
+11. OPA/PDP evaluates it.
+
+12. Action is denied.
+
+13. Alert appears in dashboard.
+
+14. Trust score decreases.
+
+15. Researcher is quarantined.
+
+16. Planner/Executor remain operational.
+
+17. Taint/provenance is visible.
+
+18. Event exists in signed ledger.
+
+19. Merkle checkpoint is created.
+
+20. Replay reconstructs the incident.
+
+21. Ledger verification succeeds.
+
+22. Blockchain anchor can be verified.
+
+23. Attack test passes automatically.
+```
+
+If any of these are manually faked, the MVP is not complete.
+
+------------------------------------------------------------------------
+
+# 47. Success Metrics
+
+Track:
+
+``` text
+decision latency p95
+events/sec
+blocked actions
+allowed actions
+alerts
+false positives
+quarantined agents
+trust changes
+ledger verification status
+replay accuracy
+attack detection rate
+```
+
+For the hackathon demo, prioritize correctness and explainability over
+massive throughput.
+
+------------------------------------------------------------------------
+
+# 48. Product Positioning
+
+Do not pitch AegisMesh as:
+
+> "Another AI monitoring dashboard."
+
+Pitch it as:
+
+> **A runtime mission-integrity layer that sits between autonomous AI
+> agents and the real world.**
+
+The system answers:
+
+``` text
+WHO?
+WHAT?
+WHY?
+ALLOWED?
+CONSISTENT?
+SAFE?
+WHAT DATA?
+WHAT HAPPENED?
+CAN WE PROVE IT?
+```
+
+------------------------------------------------------------------------
+
+# 49. Final Product Architecture
+
+``` text
+                         AEGISMESH
+              Digital Immune System for AI
+                              |
+        ┌─────────────────────┼─────────────────────┐
+        |                     |                     |
+        v                     v                     v
+   IDENTITY              MISSION              PROVENANCE
+        |                     |                     |
+        └──────────────┬──────┴──────┬──────────────┘
+                       v
+                RUNTIME INTERCEPTOR
+                       |
+              ┌────────┴────────┐
+              v                 v
+          POLICY             BEHAVIOR
+          ENGINE             ENGINE
+              |                 |
+              └────────┬────────┘
+                       v
+                    RISK
+                   ENGINE
+                       |
+          ┌────────────┼────────────┐
+          v            v            v
+       ALLOW       APPROVAL       BLOCK
+                                     |
+                                ┌────┴────┐
+                                v         v
+                             REVERT   QUARANTINE
+                                |
+                                v
+                         EVIDENCE LEDGER
+                                |
+                   ┌────────────┼────────────┐
+                   v            v            v
+                REPLAY       MERKLE      BLOCKCHAIN
+                   |            |            |
+                   └────────────┴────────────┘
+                                |
+                                v
+                           DASHBOARD
+```
+
+------------------------------------------------------------------------
+
+# 50. The single most important implementation rule
+
+**Do not build a collection of demos. Build one real security
+pipeline.**
+
+Everything should flow through:
+
+``` text
+ACTION
+  ↓
+IDENTITY
+  ↓
+CONTEXT
+  ↓
+MISSION
+  ↓
+PLAN
+  ↓
+PROVENANCE
+  ↓
+POLICY
+  ↓
+RISK
+  ↓
+DECISION
+  ↓
+ENFORCEMENT
+  ↓
+SIGNED EVIDENCE
+  ↓
+REPLAY
+```
+
+Once that pipeline is real, every additional feature becomes a detector
+or interface plugged into it.
+
+That is the architecture we should implement.
