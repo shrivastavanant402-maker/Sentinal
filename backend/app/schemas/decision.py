@@ -38,6 +38,10 @@ class ActionRequest(BaseModel):
     mission_id: Optional[str] = Field(None, description="Optional mission context identifier")
     session_id: Optional[str] = Field(None, description="Optional session context identifier")
     provenance: Optional[Dict[str, Any]] = Field(None, description="Optional taint and lineage metadata")
+    # ── Identity proof (Step 7) ───────────────────────────────────────────────
+    signature: Optional[str] = Field(None, description="Ed25519 signature (hex) over canonical message")
+    timestamp: Optional[float] = Field(None, description="Unix epoch float when the request was signed")
+    nonce: Optional[str] = Field(None, description="Unique per-request identifier for anti-replay protection")
 
 
 class DecisionResponse(BaseModel):

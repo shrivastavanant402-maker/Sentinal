@@ -54,11 +54,11 @@
 - [Developer 2] Created test_attacks_api.py with 8 comprehensive unit and integration tests covering all scenarios, alert linkage, and ledger integrity (2026-10-02)
 - [Developer 1] Completed Step 5 Verification: Fixed dead variable in trust recovery, made repository authoritative for quarantine queries, and added 6 security boundary tests (2026-10-02)
 - [Developer 1] Completed Runtime Security Step 6: Provenance/Taint Tracking and Mission Drift Detection. Enhanced ProvenanceTracker with integer severity ranking, cross-agent lineage propagation, and source helpers. Hardened PDP decision precedence ensuring default-deny BLOCK is never weakened to APPROVAL. Added test_step6_provenance_drift.py with 24 dedicated tests covering all provenance, drift, and integration invariants. Created scripts/verify_step6.py E2E verifier (2026-10-02)
+- [Developer 1] Completed Runtime Security Step 7: Agent Identity & Security Hardening. Extended ActionRequest schema with optional signature/timestamp/nonce fields for Ed25519 identity proof. Created backend/app/identity/ package (crypto.py, replay.py, schemas.py, verifier.py). Integrated IdentityVerifier into PDP.evaluate() as pipeline step 1b — fail-closed on any identity error. Updated AegisMeshClient to auto-sign enforce() calls when private_key is injected. Implemented anti-replay ReplayCache with TTL and asyncio.Lock. Added test_step7_identity.py (34 tests covering crypto primitives, replay cache, all 13 identity invariants, PDP integration, client signing). Created scripts/verify_step7.py E2E chain integrity verifier (16/16 checks). Full regression: 161/161 tests passing (2026-10-02)
 
 ## In Progress
 
 ## Next
-- Runtime Security Step 7 (2026-10-02)
 
 ## Known Bugs
 - None (2026-10-02)

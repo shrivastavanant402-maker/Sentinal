@@ -162,6 +162,48 @@ class PolicyDecisionPoint:
                 },
             )
 
+        # ── 1b. Cryptographic Identity Verification ───────────────────────
+        if self._identity_verifier is not None:
+            try:
+                from backend.app.identity.schemas import IdentityVerificationStatus
+                id_result = await self._identity_verifier.verify(request=request, agent=agent)
+                if not id_result.is_valid:
+                    logger.warning(
+                        "PEP BLOCK — Identity verification failed: agent=%s status=%s reason=%s",
+                        request.agent_id,
+                        id_result.status.value,
+                        id_result.reason,
+                    )
+                    return DecisionResponse(
+                        decision=DecisionStatus.BLOCK,
+                        allowed=False,
+                        reason=DecisionReason.INVALID_IDENTITY,
+                        risk_level=RiskLevel.HIGH,
+                        agent_id=request.agent_id,
+                        action=request.action,
+                        details={
+                            "message": id_result.reason,
+                            "identity_status": id_result.status.value,
+                            **id_result.details,
+                        },
+                    )
+            except Exception as exc:
+                # Fail closed — identity check errors are treated as verification failure
+                logger.error(
+                    "Identity verification error for agent %s (fail-closed): %s",
+                    request.agent_id,
+                    exc,
+                )
+                return DecisionResponse(
+                    decision=DecisionStatus.BLOCK,
+                    allowed=False,
+                    reason=DecisionReason.INVALID_IDENTITY,
+                    risk_level=RiskLevel.HIGH,
+                    agent_id=request.agent_id,
+                    action=request.action,
+                    details={"message": f"Identity verification error (fail-closed): {exc}"},
+                )
+
         # ── 2. Retrieve active Mission Contract ───────────────────────────
         repo = self._get_contract_repo()
         contract: Optional[MissionContract] = await repo.get_contract_for_agent(
