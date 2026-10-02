@@ -1,0 +1,66 @@
+{
+  "name": "aegismesh-vscode",
+  "displayName": "AegisMesh IDE Sentinel",
+  "description": "VS Code integration foundation and security adapter for AegisMesh Runtime Integrity Core",
+  "version": "0.1.0",
+  "publisher": "aegismesh",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Security",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "aegismesh",
+    "security",
+    "soc",
+    "runtime integrity",
+    "ai agent"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./dist/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "aegismesh.showStatus",
+        "title": "AegisMesh: Show Status",
+        "category": "AegisMesh"
+      },
+      {
+        "command": "aegismesh.checkConnection",
+        "title": "AegisMesh: Check Connection",
+        "category": "AegisMesh"
+      }
+    ],
+    "configuration": {
+      "title": "AegisMesh",
+      "properties": {
+        "aegismesh.backendUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:8000",
+          "description": "URL of the AegisMesh backend Core API."
+        },
+        "aegismesh.agentId": {
+          "type": "string",
+          "default": "ide-agent-01",
+          "description": "Agent identifier for IDE action enforcement and audit tracking."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test dist/test/*.test.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.3"
+  }
+}
