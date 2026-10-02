@@ -38,6 +38,11 @@
         "command": "aegismesh.testAction",
         "title": "AegisMesh: Test Action",
         "category": "AegisMesh"
+      },
+      {
+        "command": "aegismesh.runMission",
+        "title": "AegisMesh: Run Mission",
+        "category": "AegisMesh"
       }
     ],
     "configuration": {

@@ -32,9 +32,51 @@ export class MockStatusBarItem {
   }
 }
 
+export class MockOutputChannel {
+  lines: string[] = [];
+  visible = false;
+
+  constructor(public name: string) {}
+
+  append(val: string) {
+    this.lines.push(val);
+  }
+
+  appendLine(val: string) {
+    this.lines.push(val);
+  }
+
+  clear() {
+    this.lines = [];
+  }
+
+  show(_preserveFocus?: boolean) {
+    this.visible = true;
+  }
+
+  hide() {
+    this.visible = false;
+  }
+
+  dispose() {
+    this.lines = [];
+    this.visible = false;
+  }
+}
+
+export const mockOutputChannels: Map<string, MockOutputChannel> = new Map();
+
 export const window = {
   createStatusBarItem: (_alignment: any, _priority?: number) => {
     return new MockStatusBarItem();
+  },
+  createOutputChannel: (name: string) => {
+    const channel = new MockOutputChannel(name);
+    mockOutputChannels.set(name, channel);
+    return channel;
+  },
+  setStatusBarMessage: (_msg: string, _hideAfterTimeout?: any) => {
+    return { dispose: () => {} };
   },
   showInformationMessage: async (_message: string, ..._items: string[]) => {
     return _items[0];

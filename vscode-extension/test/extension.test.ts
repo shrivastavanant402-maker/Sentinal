@@ -6,10 +6,12 @@ import assert from 'node:assert';
 import * as http from 'node:http';
 import { HealthClient } from '../src/client/health';
 import { EnforcementClient, ActionRequest } from '../src/client/enforcement';
+import { MissionClient, MissionResult } from '../src/client/mission';
 import { AegisMeshStatusBar } from '../src/ui/statusBar';
+import { formatMissionOutput, getOutputChannel } from '../src/ui/outputChannel';
 import { DEFAULT_CONFIG, getConfig } from '../src/config';
 import { activate, deactivate } from '../src/extension';
-import { mockCommands, mockSubscriptions, mockConfigValues } from './mockVscode';
+import { mockCommands, mockSubscriptions, mockConfigValues, mockOutputChannels } from './mockVscode';
 
 describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
   let mockServer: http.Server | undefined;
@@ -113,6 +115,105 @@ describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
             res.end(JSON.stringify({ error: e.message }));
           }
         });
+      } else if ((req.url === '/missions/run' || req.url === '/api/v1/missions/run') && req.method === 'POST') {
+        let bodyStr = '';
+        req.on('data', (chunk) => {
+          bodyStr += chunk;
+        });
+        req.on('end', () => {
+          try {
+            const body = JSON.parse(bodyStr || '{}');
+
+            if (body.goal === 'mock.500') {
+              res.writeHead(500, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ detail: 'Internal mission execution error' }));
+            } else if (body.goal === 'test.blocked') {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  mission_id: 'mission-mock-block-001',
+                  session_id: 'session-mock-block-001',
+                  goal: body.goal,
+                  status: 'BLOCKED',
+                  planner_result: null,
+                  researcher_result: null,
+                  executor_result: null,
+                  execution_trace: [
+                    {
+                      step: 1,
+                      agent_id: 'planner-01',
+                      action: 'task.delegate',
+                      status: 'BLOCKED',
+                      decision: 'BLOCKED',
+                      reason: 'POLICY_VIOLATION',
+                      risk: 'critical',
+                      event_id: 'evt-mock-block-001',
+                      error: 'Action prohibited by contract',
+                    },
+                  ],
+                  event_ids: ['evt-mock-block-001'],
+                  error: 'Action prohibited by contract',
+                  error_details: { reason: 'POLICY_VIOLATION' },
+                })
+              );
+            } else {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(
+                JSON.stringify({
+                  mission_id: 'mission-mock-happy-100',
+                  session_id: 'session-mock-happy-100',
+                  goal: body.goal,
+                  status: 'COMPLETED',
+                  planner_result: { status: 'delegated', target_agent: 'researcher-01' },
+                  researcher_result: { status: 'success', results: ['Intel 1', 'Intel 2'] },
+                  executor_result: { status: 'generated', content: 'AegisMesh briefing' },
+                  execution_trace: [
+                    {
+                      step: 1,
+                      agent_id: 'planner-01',
+                      action: 'task.delegate',
+                      status: 'ALLOW',
+                      decision: 'ALLOW',
+                      reason: 'ALLOWED_BY_POLICY',
+                      risk: 'low',
+                      event_id: 'evt-mock-plan-101',
+                    },
+                    {
+                      step: 2,
+                      agent_id: 'researcher-01',
+                      action: 'web.search',
+                      status: 'ALLOW',
+                      decision: 'ALLOW',
+                      reason: 'ALLOWED_BY_POLICY',
+                      risk: 'low',
+                      event_id: 'evt-mock-res-102',
+                    },
+                    {
+                      step: 3,
+                      agent_id: 'executor-01',
+                      action: 'report.generate',
+                      status: 'ALLOW',
+                      decision: 'ALLOW',
+                      reason: 'ALLOWED_BY_POLICY',
+                      risk: 'low',
+                      event_id: 'evt-mock-exec-103',
+                    },
+                  ],
+                  event_ids: [
+                    'evt-mock-plan-101',
+                    'evt-mock-res-102',
+                    'evt-mock-exec-103',
+                  ],
+                  error: null,
+                  error_details: null,
+                })
+              );
+            }
+          } catch (e: any) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: e.message }));
+          }
+        });
       } else {
         res.writeHead(404);
         res.end();
@@ -130,6 +231,9 @@ describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
 
   after(async () => {
     if (mockServer) {
+      if (typeof (mockServer as any).closeAllConnections === 'function') {
+        (mockServer as any).closeAllConnections();
+      }
       await new Promise<void>((resolve) => mockServer!.close(() => resolve()));
     }
   });
@@ -398,5 +502,172 @@ describe('AegisMesh VS Code Extension Foundation & Enforcement', () => {
     assert.strictEqual(unregRes.decision?.decision, 'BLOCK');
     assert.strictEqual(unregRes.decision?.allowed, false);
     assert.strictEqual(unregRes.decision?.reason, 'INVALID_IDENTITY');
+  });
+
+  // ── 9. Mission Control Tests ─────────────────────────────────────────────
+  it('should contribute and register aegismesh.runMission command', () => {
+    assert.strictEqual(mockCommands.has('aegismesh.runMission'), true);
+  });
+
+  it('should handle empty or whitespace mission goal input by rejecting gracefully', async () => {
+    const runMission = mockCommands.get('aegismesh.runMission');
+    assert.ok(runMission);
+
+    // Empty string
+    const res1 = await runMission('');
+    assert.strictEqual(res1, undefined);
+
+    // Whitespace string
+    const res2 = await runMission('   ');
+    assert.strictEqual(res2, undefined);
+  });
+
+  it('should handle successful mission response and write real IDs to output channel', async () => {
+    mockConfigValues.set('aegismesh.backendUrl', `http://127.0.0.1:${mockServerPort}`);
+    const runMission = mockCommands.get('aegismesh.runMission');
+    assert.ok(runMission);
+
+    const goal = 'Analyze supply chain integrity';
+    const result = await runMission(goal);
+
+    assert.ok(result);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.data?.status, 'COMPLETED');
+    assert.strictEqual(result.data?.mission_id, 'mission-mock-happy-100');
+    assert.strictEqual(result.data?.event_ids.length, 3);
+
+    // Verify output channel contains real mission and event IDs
+    const channel = mockOutputChannels.get('AegisMesh');
+    assert.ok(channel);
+    const text = channel.lines.join('\n');
+    assert.ok(text.includes('Mission: mission-mock-happy-100'));
+    assert.ok(text.includes('Mission Status: COMPLETED'));
+    assert.ok(text.includes('evt-mock-plan-101'));
+    assert.ok(text.includes('evt-mock-res-102'));
+    assert.ok(text.includes('evt-mock-exec-103'));
+  });
+
+  it('should handle blocked mission response correctly', async () => {
+    mockConfigValues.set('aegismesh.backendUrl', `http://127.0.0.1:${mockServerPort}`);
+    const runMission = mockCommands.get('aegismesh.runMission');
+    assert.ok(runMission);
+
+    const result = await runMission('test.blocked');
+    assert.ok(result);
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(result.data?.status, 'BLOCKED');
+    assert.strictEqual(result.data?.mission_id, 'mission-mock-block-001');
+    assert.strictEqual(result.data?.error, 'Action prohibited by contract');
+
+    const channel = mockOutputChannels.get('AegisMesh');
+    assert.ok(channel);
+    const text = channel.lines.join('\n');
+    assert.ok(text.includes('Mission Status: BLOCKED'));
+    assert.ok(text.includes('Error: Action prohibited by contract'));
+    assert.ok(text.includes('evt-mock-block-001'));
+  });
+
+  it('should handle failed backend request gracefully', async () => {
+    mockConfigValues.set('aegismesh.backendUrl', `http://127.0.0.1:${mockServerPort}`);
+    const runMission = mockCommands.get('aegismesh.runMission');
+    assert.ok(runMission);
+
+    // HTTP 500 error from backend
+    const res500 = await runMission('mock.500');
+    assert.ok(res500);
+    assert.strictEqual(res500.ok, false);
+    assert.strictEqual(res500.statusCode, 500);
+
+    // Unreachable port
+    mockConfigValues.set('aegismesh.backendUrl', 'http://127.0.0.1:1');
+    const resUnreach = await runMission('unreachable.test');
+    assert.ok(resUnreach);
+    assert.strictEqual(resUnreach.ok, false);
+    assert.ok(resUnreach.error?.length);
+  });
+
+  it('should format mission output correctly for both COMPLETED and BLOCKED states', () => {
+    const successResult: MissionResult = {
+      mission_id: 'mission-fmt-1',
+      session_id: 'session-fmt-1',
+      goal: 'Format test goal',
+      status: 'COMPLETED',
+      execution_trace: [
+        {
+          step: 1,
+          agent_id: 'planner-01',
+          action: 'task.delegate',
+          status: 'ALLOW',
+          decision: 'ALLOW',
+          reason: 'ALLOWED_BY_POLICY',
+          risk: 'low',
+          event_id: 'evt-fmt-1',
+        },
+      ],
+      event_ids: ['evt-fmt-1'],
+    };
+
+    const formattedSuccess = formatMissionOutput(successResult);
+    assert.ok(formattedSuccess.includes('AegisMesh Mission'));
+    assert.ok(formattedSuccess.includes('Mission: mission-fmt-1'));
+    assert.ok(formattedSuccess.includes('Session: session-fmt-1'));
+    assert.ok(formattedSuccess.includes('Goal:\nFormat test goal'));
+    assert.ok(formattedSuccess.includes('Execution Trace'));
+    assert.ok(formattedSuccess.includes('[1] planner-01'));
+    assert.ok(formattedSuccess.includes('Action: task.delegate'));
+    assert.ok(formattedSuccess.includes('Decision: ALLOW'));
+    assert.ok(formattedSuccess.includes('Reason: ALLOWED_BY_POLICY'));
+    assert.ok(formattedSuccess.includes('Risk: low'));
+    assert.ok(formattedSuccess.includes('Event ID: evt-fmt-1'));
+    assert.ok(formattedSuccess.includes('Mission Status: COMPLETED'));
+    assert.ok(formattedSuccess.includes('Event IDs:\nevt-fmt-1'));
+
+    const blockedResult: MissionResult = {
+      mission_id: 'mission-fmt-2',
+      session_id: 'session-fmt-2',
+      goal: 'Blocked test goal',
+      status: 'BLOCKED',
+      execution_trace: [
+        {
+          step: 1,
+          agent_id: 'planner-01',
+          action: 'task.delegate',
+          status: 'BLOCKED',
+          decision: 'BLOCKED',
+          reason: 'FORBIDDEN_ACTION',
+          risk: 'critical',
+          event_id: 'evt-fmt-2',
+          error: 'Action forbidden',
+        },
+      ],
+      event_ids: ['evt-fmt-2'],
+      error: 'Action forbidden by policy',
+    };
+
+    const formattedBlocked = formatMissionOutput(blockedResult);
+    assert.ok(formattedBlocked.includes('Mission Status: BLOCKED'));
+    assert.ok(formattedBlocked.includes('Error: Action forbidden by policy'));
+    assert.ok(formattedBlocked.includes('Event ID: evt-fmt-2'));
+  });
+
+  it('should run real live mission end-to-end against backend port 8000 when available', async () => {
+    const healthClient = new HealthClient();
+    const health = await healthClient.check('http://127.0.0.1:8000');
+    if (!health.ok) return;
+
+    mockConfigValues.set('aegismesh.backendUrl', 'http://127.0.0.1:8000');
+    const runMission = mockCommands.get('aegismesh.runMission');
+    assert.ok(runMission);
+
+    const liveResult = await runMission('Live E2E VS Code Sentinel Integration Mission');
+    assert.ok(liveResult);
+    assert.strictEqual(liveResult.ok, true);
+    assert.strictEqual(liveResult.data?.status, 'COMPLETED');
+    assert.ok(liveResult.data?.mission_id.length);
+    assert.strictEqual(liveResult.data?.event_ids.length, 3);
+
+    for (const eid of liveResult.data?.event_ids || []) {
+      assert.ok(eid.length > 0);
+    }
   });
 });

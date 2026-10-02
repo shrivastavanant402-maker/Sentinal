@@ -2,7 +2,9 @@ import * as vscode from 'vscode';
 import { getConfig } from '../config';
 import { HealthClient } from '../client/health';
 import { EnforcementClient, ActionRequest } from '../client/enforcement';
+import { MissionClient } from '../client/mission';
 import { AegisMeshStatusBar } from '../ui/statusBar';
+import { displayMissionResult, getOutputChannel } from '../ui/outputChannel';
 
 /**
  * Registers all commands contributed by the AegisMesh extension.
@@ -11,7 +13,8 @@ export function registerCommands(
   context: vscode.ExtensionContext,
   statusBar: AegisMeshStatusBar,
   healthClient: HealthClient,
-  enforcementClient: EnforcementClient
+  enforcementClient: EnforcementClient,
+  missionClient?: MissionClient
 ): void {
   // ── Command: AegisMesh: Check Connection ─────────────────────────────────
   const checkConnectionCommand = vscode.commands.registerCommand(
@@ -190,5 +193,95 @@ export function registerCommands(
     }
   );
 
-  context.subscriptions.push(checkConnectionCommand, showStatusCommand, testActionCommand);
+  // ── Command: AegisMesh: Run Mission ──────────────────────────────────────
+  const runMissionCommand = vscode.commands.registerCommand(
+    'aegismesh.runMission',
+    async (providedGoal?: string) => {
+      const config = getConfig();
+
+      let goal = providedGoal;
+      if (goal === undefined) {
+        goal = await vscode.window.showInputBox({
+          title: 'AegisMesh: Run Mission',
+          prompt: 'Enter mission goal / objective for multi-agent coordination',
+          placeHolder: 'e.g. Research supply chain zero-day vulnerabilities and compile executive briefing',
+        });
+      }
+
+      if (!goal || !goal.trim()) {
+        vscode.window.showWarningMessage('AegisMesh: Mission goal cannot be empty.');
+        return;
+      }
+
+      const client = missionClient || new MissionClient();
+
+      vscode.window.setStatusBarMessage('$(sync~spin) AegisMesh: Running mission...', 4000);
+
+      const result = await client.runMission({ goal: goal.trim() }, config.backendUrl);
+
+      if (!result.ok || !result.data) {
+        vscode.window.showErrorMessage(
+          `AegisMesh mission dispatch failed: ${result.error || 'Connection error'}`
+        );
+        return result;
+      }
+
+      const missionResult = result.data;
+      displayMissionResult(missionResult);
+
+      if (missionResult.status === 'COMPLETED') {
+        const p = vscode.window.showInformationMessage(
+          `AegisMesh Mission [${missionResult.mission_id}] COMPLETED. See Output Channel for details.`,
+          'View Output'
+        );
+        if (p && typeof p.then === 'function') {
+          p.then((sel) => {
+            if (sel === 'View Output') {
+              getOutputChannel().show(true);
+            }
+          });
+        }
+      } else if (missionResult.status === 'BLOCKED') {
+        const p = vscode.window.showErrorMessage(
+          `AegisMesh Mission [${missionResult.mission_id}] BLOCKED: ${missionResult.error || 'Policy violation'}`,
+          'View Output'
+        );
+        if (p && typeof p.then === 'function') {
+          p.then((sel) => {
+            if (sel === 'View Output') {
+              getOutputChannel().show(true);
+            }
+          });
+        }
+      } else if (missionResult.status === 'QUARANTINED') {
+        const p = vscode.window.showErrorMessage(
+          `AegisMesh Mission [${missionResult.mission_id}] QUARANTINED: ${missionResult.error || 'Agent quarantined'}`,
+          'View Output'
+        );
+        if (p && typeof p.then === 'function') {
+          p.then((sel) => {
+            if (sel === 'View Output') {
+              getOutputChannel().show(true);
+            }
+          });
+        }
+      } else {
+        const p = vscode.window.showWarningMessage(
+          `AegisMesh Mission [${missionResult.mission_id}] finished with status: ${missionResult.status}`,
+          'View Output'
+        );
+        if (p && typeof p.then === 'function') {
+          p.then((sel) => {
+            if (sel === 'View Output') {
+              getOutputChannel().show(true);
+            }
+          });
+        }
+      }
+
+      return result;
+    }
+  );
+
+  context.subscriptions.push(checkConnectionCommand, showStatusCommand, testActionCommand, runMissionCommand);
 }
