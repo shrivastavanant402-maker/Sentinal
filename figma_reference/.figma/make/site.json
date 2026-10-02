@@ -1,0 +1,10 @@
+{
+  "description": "Delivers a professional, user-friendly interface tailored to complex architectures, enabling seamless interaction and efficient end-to-end product management.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

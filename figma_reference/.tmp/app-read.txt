@@ -1,0 +1,1203 @@
+[/workspaces/default/code/src/App.tsx#53ac]
+1:import { useEffect, useMemo, useState, type ReactNode } from "react"
+2:import { agents, mission, replayEvents, runtimeEvents } from "./data"
+3:import type { Agent, Decision, RuntimeEvent, View } from "./types"
+4:
+5:type IconName = "activity" | "agents" | "alert" | "replay" | "ledger" | "search" | "bell" | "check" | "pause" | "play" | "filter" | "chevron" | "shield" | "copy" | "more" | "x" | "clock" | "link"
+6:
+7:const iconPaths: Record<IconName, ReactNode> = {
+8:  activity: (
+9:    <>
+10:      <path d="M3 12h4l2-7 4 14 2-7h6" />
+11:    </>
+12:  ),
+13:  agents: (
+14:    <>
+15:      <circle cx="9" cy="7" r="4" />
+16:      <path d="M2.5 21v-2a6.5 6.5 0 0 1 13 0v2M16 4.5a4 4 0 0 1 0 7.5M18 15a5 5 0 0 1 3.5 4.8V21" />
+17:    </>
+18:  ),
+19:  alert: (
+20:    <>
+21:      <path d="M12 3 2.8 19a1.4 1.4 0 0 0 1.2 2h16a1.4 1.4 0 0 0 1.2-2L12 3Z" />
+22:      <path d="M12 9v4M12 17h.01" />
+23:    </>
+24:  ),
+25:  replay: (
+26:    <>
+27:      <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+28:      <path d="M3 3v5h5" />
+29:    </>
+30:  ),
+31:  ledger: (
+32:    <>
+33:      <path d="M5 3h14v18H5zM8 7h8M8 11h8M8 15h5" />
+34:    </>
+35:  ),
+36:  search: (
+37:    <>
+38:      <circle cx="11" cy="11" r="7" />
+39:      <path d="m20 20-4-4" />
+40:    </>
+41:  ),
+42:  bell: (
+43:    <>
+44:      <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" />
+45:    </>
+46:  ),
+47:  check: <path d="m5 12 4 4L19 6" />,
+48:  pause: (
+49:    <>
+50:      <path d="M9 5v14M15 5v14" />
+51:    </>
+52:  ),
+53:  play: <path d="m8 5 11 7-11 7V5Z" />,
+54:  filter: <path d="M4 6h16M7 12h10M10 18h4" />,
+55:  chevron: <path d="m9 18 6-6-6-6" />,
+56:  shield: (
+57:    <>
+58:      <path d="M12 3 20 6v5c0 5-3.4 8.5-8 10-4.6-1.5-8-5-8-10V6l8-3Z" />
+59:      <path d="m8.5 12 2 2 5-5" />
+60:    </>
+61:  ),
+62:  copy: (
+63:    <>
+64:      <rect x="8" y="8" width="11" height="11" rx="2" />
+65:      <path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3" />
+66:    </>
+67:  ),
+68:  more: (
+69:    <>
+70:      <circle cx="5" cy="12" r="1" />
+71:      <circle cx="12" cy="12" r="1" />
+72:      <circle cx="19" cy="12" r="1" />
+73:    </>
+74:  ),
+75:  x: (
+76:    <>
+77:      <path d="m6 6 12 12M18 6 6 18" />
+78:    </>
+79:  ),
+80:  clock: (
+81:    <>
+82:      <circle cx="12" cy="12" r="9" />
+83:      <path d="M12 7v5l3 2" />
+84:    </>
+85:  ),
+86:  link: (
+87:    <>
+88:      <path d="M10 13a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.2" />
+89:      <path d="M14 11a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.2" />
+90:    </>
+91:  ),
+92:}
+93:
+94:function Icon({ name, size = 17 }: { name: IconName size?: number }) {
+95:  return (
+96:    <svg
+97:      width={size}
+98:      height={size}
+99:      viewBox="0 0 24 24"
+100:      fill="none"
+101:      stroke="currentColor"
+102:      strokeWidth="1.7"
+103:      strokeLinecap="round"
+104:      strokeLinejoin="round"
+105:      aria-hidden="true"
+106:    >
+107:      {iconPaths[name]}
+108:    </svg>
+109:  )
+110:}
+111:function Button({
+112:  children,
+113:  variant = "ghost",
+114:  className = "",
+115:  onClick,
+116:  title,
+117:  disabled = false,
+118:}: {
+119:  children: ReactNode
+120:  variant?: "primary" | "secondary" | "ghost" | "danger"
+121:  className?: string
+122:  onClick?: () => void
+123:  title?: string
+124:  disabled?: boolean
+125:}) {
+126:  return (
+127:    <button
+128:      type="button"
+129:      className={`button ${variant} ${className}`}
+130:      onClick={onClick}
+131:      title={title}
+132:      disabled={disabled}
+133:    >
+134:      {children}
+135:    </button>
+136:  )
+137:}
+138:function Input({
+139:  value,
+140:  onChange,
+141:  placeholder,
+142:  label,
+143:}: {
+144:  value: string
+145:  onChange: (value: string) => void
+146:  placeholder: string
+147:  label: string
+148:}) {
+149:  return (
+150:    <div className="input-wrap">
+151:      <Icon name="search" size={15} />
+152:      <input
+153:        aria-label={label}
+154:        value={value}
+155:        onChange={(e) => onChange(e.target.value)}
+156:        placeholder={placeholder}
+157:      />
+158:    </div>
+159:  )
+160:}
+161:function Select({
+162:  value,
+163:  onChange,
+164:  label,
+165:  children,
+166:}: {
+167:  value: string
+168:  onChange: (value: string) => void
+169:  label: string
+170:  children: ReactNode
+171:}) {
+172:  return (
+173:    <select
+174:      aria-label={label}
+175:      value={value}
+176:      onChange={(e) => onChange(e.target.value)}
+177:    >
+178:      {children}
+179:    </select>
+180:  )
+181:}
+182:function Status({ value }: { value: string }) {
+183:  const tone = ["Critical", "Block", "Quarantined", "Failed"].includes(value)
+184:    ? "critical"
+185:    : ["High", "Require approval", "Degraded", "Pending"].includes(value)
+186:      ? "warning"
+187:      : ["Allow", "Active", "Trusted", "Verified", "Contained"].includes(value)
+188:        ? "success"
+189:        : "neutral"
+190:  return (
+191:    <span className={`status ${tone}`}>
+192:      <span />
+193:      {value}
+194:    </span>
+195:  )
+196:}
+197:function CopyButton({ value }: { value: string }) {
+198:  const [copied, setCopied] = useState(false)
+199:  const copy = async () => {
+200:    await navigator.clipboard?.writeText(value)
+201:    setCopied(true)
+202:    window.setTimeout(() => setCopied(false), 1200)
+203:  }
+204:  return (
+205:    <Button className="copy-button" onClick={copy} title={`Copy ${value}`}>
+206:      <Icon name={copied ? "check" : "copy"} size={13} />
+207:      {copied ? "Copied" : "Copy"}
+208:    </Button>
+209:  )
+210:}
+211:
+212:const nav: { id: View label: string icon: IconName count?: number }[] = [
+213:  { id: "operations", label: "Operations", icon: "activity" },
+214:  { id: "agents", label: "Agents", icon: "agents" },
+215:  { id: "incident", label: "Incidents", icon: "alert", count: 1 },
+216:  { id: "replay", label: "Replay", icon: "replay" },
+217:  { id: "ledger", label: "Audit ledger", icon: "ledger" },
+218:]
+219:
+220:function AppShell({
+221:  view,
+222:  setView,
+223:  children,
+224:}: {
+225:  view: View
+226:  setView: (view: View) => void
+227:  children: ReactNode
+228:}) {
+229:  const [globalSearch, setGlobalSearch] = useState("")
+230:  return (
+231:    <div className="app-shell">
+232:      <aside className="sidebar">
+233:        <div className="brand">
+234:          <div className="brand-symbol">
+235:            <Icon name="shield" size={18} />
+236:          </div>
+237:          <span>AegisMesh</span>
+238:        </div>
+239:        <nav aria-label="Primary navigation">
+240:          {nav.map((item) => (
+241:            <Button
+242:              key={item.id}
+243:              className={`nav-button ${view === item.id ? "active" : ""}`}
+244:              onClick={() => setView(item.id)}
+245:            >
+246:              <Icon name={item.icon} />
+247:              <span>{item.label}</span>
+248:              {item.count && <b>{item.count}</b>}
+249:            </Button>
+250:          ))}
+251:        </nav>
+252:        <div className="sidebar-footer">
+253:          <div className="connection">
+254:            <span />
+255:            All systems operational
+256:          </div>
+257:          <div className="user-row">
+258:            <div className="avatar">AK</div>
+259:            <div>
+260:              <strong>Alex Kim</strong>
+261:              <small>Security admin</small>
+262:            </div>
+263:            <Icon name="more" size={16} />
+264:          </div>
+265:        </div>
+266:      </aside>
+267:      <main className="main">
+268:        <header className="topbar">
+269:          <Input
+270:            value={globalSearch}
+271:            onChange={setGlobalSearch}
+272:            placeholder="Search agents, incidents, events, or hashes"
+273:            label="Global search"
+274:          />
+275:          <div className="top-actions">
+276:            <div className="environment">
+277:              <span />
+278:              Production
+279:            </div>
+280:            <Button className="icon-button" title="Notifications">
+281:              <Icon name="bell" />
+282:            </Button>
+283:          </div>
+284:        </header>
+285:        {children}
+286:      </main>
+287:    </div>
+288:  )
+289:}
+290:
+291:function PageHeader({
+292:  title,
+293:  description,
+294:  children,
+295:  eyebrow,
+296:}: {
+297:  title: string
+298:  description: string
+299:  children?: ReactNode
+300:  eyebrow?: string
+301:}) {
+302:  return (
+303:    <section className="page-header">
+304:      <div>
+305:        {eyebrow && <div className="breadcrumb">{eyebrow}</div>}
+306:        <div className="page-title">{title}</div>
+307:        <div className="page-description">{description}</div>
+308:      </div>
+309:      {children && <div className="header-actions">{children}</div>}
+310:    </section>
+311:  )
+312:}
+313:
+314:function FilterBar({
+315:  query,
+316:  setQuery,
+317:  agent,
+318:  setAgent,
+319:  decision,
+320:  setDecision,
+321:  extra,
+322:}: {
+323:  query: string
+324:  setQuery: (v: string) => void
+325:  agent?: string
+326:  setAgent?: (v: string) => void
+327:  decision?: string
+328:  setDecision?: (v: string) => void
+329:  extra?: ReactNode
+330:}) {
+331:  return (
+332:    <div className="filter-bar">
+333:      <Input
+334:        value={query}
+335:        onChange={setQuery}
+336:        placeholder="Filter records"
+337:        label="Filter records"
+338:      />
+339:      {setAgent && (
+340:        <Select
+341:          value={agent || "All agents"}
+342:          onChange={setAgent}
+343:          label="Filter by agent"
+344:        >
+345:          <option>All agents</option>
+346:          {agents.map((a) => (
+347:            <option key={a.id}>{a.name}</option>
+348:          ))}
+349:        </Select>
+350:      )}
+351:      {setDecision && (
+352:        <Select
+353:          value={decision || "All decisions"}
+354:          onChange={setDecision}
+355:          label="Filter by decision"
+356:        >
+357:          <option>All decisions</option>
+358:          <option>Allow</option>
+359:          <option>Block</option>
+360:          <option>Sandbox</option>
+361:        </Select>
+362:      )}
+363:      <Button variant="secondary">
+364:        <Icon name="clock" size={14} />
+365:        Last 15 minutes
+366:      </Button>
+367:      {extra}
+368:      <span className="record-count">Updated just now</span>
+369:    </div>
+370:  )
+371:}
+372:
+373:function EventTable({
+374:  events,
+375:  selected,
+376:  onSelect,
+377:}: {
+378:  events: RuntimeEvent[]
+379:  selected?: RuntimeEvent | null
+380:  onSelect?: (event: RuntimeEvent) => void
+381:}) {
+382:  return (
+383:    <div className="data-table event-table">
+384:      <div className="table-head">
+385:        <span>Time</span>
+386:        <span>Agent</span>
+387:        <span>Event</span>
+388:        <span>Resource</span>
+389:        <span>Decision</span>
+390:        <span>Risk</span>
+391:        <span>Latency</span>
+392:      </div>
+393:      {events.map((event) => (
+394:        <Button
+395:          key={event.seq}
+396:          className={`table-row ${
+397:            selected?.seq === event.seq ? "selected" : ""
+398:          }`}
+399:          onClick={() => onSelect?.(event)}
+400:        >
+401:          <code>{event.time}</code>
+402:          <span>{event.agent}</span>
+403:          <strong>{event.type}</strong>
+404:          <code>{event.resource}</code>
+405:          <Status value={event.decision} />
+406:          <span className={`risk ${event.severity.toLowerCase()}`}>
+407:            {event.severity}
+408:          </span>
+409:          <code className="right">{event.latency} ms</code>
+410:        </Button>
+411:      ))}
+412:      {events.length === 0 && (
+413:        <div className="empty-state">No events match the current filters.</div>
+414:      )}
+415:    </div>
+416:  )
+417:}
+418:
+419:function OperationsView({ go }: { go: (view: View) => void }) {
+420:  const [query, setQuery] = useState("")
+421:  const [agent, setAgent] = useState("All agents")
+422:  const [decision, setDecision] = useState("All decisions")
+423:  const [paused, setPaused] = useState(false)
+424:  const [selected, setSelected] = useState<RuntimeEvent | null>(
+425:    runtimeEvents[3],
+426:  )
+427:  const filtered = useMemo(
+428:    () =>
+429:      runtimeEvents.filter(
+430:        (event) =>
+431:          (agent === "All agents" || event.agent === agent) &&
+432:          (decision === "All decisions" || event.decision === decision) &&
+433:          `${event.type} ${event.resource} ${event.agent}`
+434:            .toLowerCase()
+435:            .includes(query.toLowerCase()),
+436:      ),
+437:    [query, agent, decision],
+438:  )
+439:  return (
+440:    <div className="page">
+441:      <PageHeader
+442:        title="Live operations"
+443:        description="Monitor enforcement decisions, agent health, and mission continuity in real time."
+444:      >
+445:        <Button variant="secondary">
+446:          <Icon name="clock" size={14} />
+447:          Last 15 minutes
+448:        </Button>
+449:      </PageHeader>
+450:      <section className="metric-strip">
+451:        <div>
+452:          <span>Active agents</span>
+453:          <strong>2 of 3</strong>
+454:          <small>1 quarantined</small>
+455:        </div>
+456:        <div>
+457:          <span>Events / sec</span>
+458:          <strong>1,284</strong>
+459:          <small className="positive">+4.2% vs prior 15m</small>
+460:        </div>
+461:        <div>
+462:          <span>Block rate</span>
+463:          <strong>0.13%</strong>
+464:          <small>17 of 13,114 actions</small>
+465:        </div>
+466:        <div>
+467:          <span>Decision p95</span>
+468:          <strong>42 ms</strong>
+469:          <small className="positive">Within 100 ms SLO</small>
+470:        </div>
+471:        <div>
+472:          <span>Ledger status</span>
+473:          <strong className="verified">Verified</strong>
+474:          <small>Through sequence #18402</small>
+475:        </div>
+476:      </section>
+477:      <section className="priority-panel">
+478:        <div className="section-heading">
+479:          <div>
+480:            <strong>Needs attention</strong>
+481:            <span>1 active incident · 1 pending approval</span>
+482:          </div>
+483:        </div>
+484:        <div className="priority-row critical-row">
+485:          <Status value="Critical" />
+486:          <div className="priority-content">
+487:            <strong>Unauthorized data export attempt</strong>
+488:            <span>
+489:              Researcher-01 attempted <code>database.export("customers")</code>
+490:            </span>
+491:          </div>
+492:          <div className="priority-meta">
+493:            <span>Contained in 19 ms</span>
+494:            <small>10:31:06 UTC</small>
+495:          </div>
+496:          <Button variant="primary" onClick={() => go("incident")}>
+497:            Investigate
+498:          </Button>
+499:        </div>
+500:        <div className="priority-row">
+501:          <Status value="Require approval" />
+502:          <div className="priority-content">
+503:            <strong>External report delivery</strong>
+504:            <span>
+505:              Executor-01 requests <code>external.post</code> to
+506:              reports.example.com
+507:            </span>
+508:          </div>
+509:          <div className="priority-meta">
+510:            <span>Expires in 42s</span>
+511:            <small>Approval #APR-104</small>
+512:          </div>
+513:          <Button variant="secondary">Review</Button>
+514:        </div>
+515:      </section>
+516:      <div className="operations-layout">
+517:        <section className="panel activity-panel">
+518:          <div className="section-heading">
+519:            <div>
+520:              <strong>Runtime activity</strong>
+521:              <span>Signed policy and enforcement events</span>
+522:            </div>
+523:            <Button variant="secondary" onClick={() => setPaused(!paused)}>
+524:              <Icon name={paused ? "play" : "pause"} size={14} />
+525:              {paused ? "Resume stream" : "Pause stream"}
+526:            </Button>
+527:          </div>
+528:          <FilterBar
+529:            query={query}
+530:            setQuery={setQuery}
+531:            agent={agent}
+532:            setAgent={setAgent}
+533:            decision={decision}
+534:            setDecision={setDecision}
+535:          />
+536:          <EventTable
+537:            events={filtered}
+538:            selected={selected}
+539:            onSelect={setSelected}
+540:          />
+541:          <div className="table-footer">
+542:            <span>
+543:              Showing {filtered.length} of {runtimeEvents.length} events
+544:            </span>
+545:            <span>{paused ? "Stream paused" : "Live stream connected"}</span>
+546:          </div>
+547:        </section>
+548:        <aside className="right-column">
+549:          {selected && (
+550:            <section className="panel inspector">
+551:              <div className="section-heading">
+552:                <div>
+553:                  <strong>Event details</strong>
+554:                  <span>Sequence #{selected.seq}</span>
+555:                </div>
+556:                <Button title="Close details" onClick={() => setSelected(null)}>
+557:                  <Icon name="x" size={15} />
+558:                </Button>
+559:              </div>
+560:              <dl>
+561:                <dt>Decision reason</dt>
+562:                <dd>{selected.reason}</dd>
+563:                <dt>Event hash</dt>
+564:                <dd className="inline-copy">
+565:                  <code>{selected.hash.slice(0, 15)}…</code>
+566:                  <CopyButton value={selected.hash} />
+567:                </dd>
+568:                <dt>Signature</dt>
+569:                <dd>
+570:                  <Status value={selected.signature} />
+571:                </dd>
+572:                <dt>Policy latency</dt>
+573:                <dd>{selected.latency} ms</dd>
+574:              </dl>
+575:              <Button
+576:                variant="secondary"
+577:                className="full-width"
+578:                onClick={() => go("ledger")}
+579:              >
+580:                View ledger evidence
+581:              </Button>
+582:            </section>
+583:          )}
+584:          <section className="panel agents-panel">
+585:            <div className="section-heading">
+586:              <div>
+587:                <strong>Agent posture</strong>
+588:                <span>Current mission participants</span>
+589:              </div>
+590:              <Button onClick={() => go("agents")}>View all</Button>
+591:            </div>
+592:            {agents.map((item) => (
+593:              <Button
+594:                key={item.id}
+595:                className="agent-row"
+596:                onClick={() => go("agents")}
+597:              >
+598:                <div className="agent-avatar">{item.name[0]}</div>
+599:                <div>
+600:                  <strong>{item.name}</strong>
+601:                  <span>{item.step}</span>
+602:                </div>
+603:                <Status value={item.status} />
+604:                <code>{item.trust}</code>
+605:              </Button>
+606:            ))}
+607:          </section>
+608:          <section className="panel mission-panel">
+609:            <span>Active mission · SESS-001</span>
+610:            <strong>{mission}</strong>
+611:            <div className="mission-progress">
+612:              <span />
+613:            </div>
+614:            <small>Step 2 of 3 · Workflow continued after containment</small>
+615:          </section>
+616:        </aside>
+617:      </div>
+618:    </div>
+619:  )
+620:}
+621:
+622:function AgentsView({ setDialog }: { setDialog: (value: boolean) => void }) {
+623:  const [query, setQuery] = useState("")
+624:  const [selected, setSelected] = useState<Agent>(agents[1])
+625:  const filtered = agents.filter((item) =>
+626:    `${item.name} ${item.role} ${item.status}`
+627:      .toLowerCase()
+628:      .includes(query.toLowerCase()),
+629:  )
+630:  return (
+631:    <div className="page">
+632:      <PageHeader
+633:        title="Agents"
+634:        description="Inspect identity, permissions, mission contracts, and behavioral trust."
+635:      >
+636:        <Button variant="primary">Register agent</Button>
+637:      </PageHeader>
+638:      <section className="panel">
+639:        <FilterBar query={query} setQuery={setQuery} />
+640:        <div className="data-table agent-table">
+641:          <div className="table-head">
+642:            <span>Agent</span>
+643:            <span>Status</span>
+644:            <span>Trust</span>
+645:            <span>Current step</span>
+646:            <span>Last event</span>
+647:            <span>Contract</span>
+648:          </div>
+649:          {filtered.map((item) => (
+650:            <Button
+651:              key={item.id}
+652:              className={`table-row ${
+653:                selected.id === item.id ? "selected" : ""
+654:              }`}
+655:              onClick={() => setSelected(item)}
+656:            >
+657:              <span className="agent-cell">
+658:                <span className="agent-avatar">{item.name[0]}</span>
+659:                <span>
+660:                  <strong>{item.name}</strong>
+661:                  <small>{item.role}</small>
+662:                </span>
+663:              </span>
+664:              <Status value={item.status} />
+665:              <span className="trust-cell">
+666:                <strong>{item.trust}</strong>
+667:                <small>{item.tier}</small>
+668:              </span>
+669:              <span>{item.step}</span>
+670:              <span>{item.lastEvent}</span>
+671:              <code>{item.contract}</code>
+672:            </Button>
+673:          ))}
+674:        </div>
+675:      </section>
+676:      <section className="agent-detail panel">
+677:        <div className="detail-header">
+678:          <div className="agent-avatar large">{selected.name[0]}</div>
+679:          <div>
+680:            <div className="detail-title">{selected.name}</div>
+681:            <span>
+682:              {selected.role} · {selected.id}
+683:            </span>
+684:          </div>
+685:          <div className="detail-actions">
+686:            <Button variant="secondary">Halt agent</Button>
+687:            {selected.status === "Quarantined" && (
+688:              <Button variant="danger" onClick={() => setDialog(true)}>
+689:                Release quarantine
+690:              </Button>
+691:            )}
+692:          </div>
+693:        </div>
+694:        <div className="detail-grid">
+695:          <div>
+696:            <div className="subsection-title">Identity and contract</div>
+697:            <dl className="key-values">
+698:              <dt>Identity</dt>
+699:              <dd>
+700:                <Status value="Verified" />
+701:              </dd>
+702:              <dt>Capability token</dt>
+703:              <dd>{selected.token}</dd>
+704:              <dt>Contract</dt>
+705:              <dd>
+706:                <code>{selected.contract}</code>
+707:              </dd>
+708:              <dt>Mission</dt>
+709:              <dd>{selected.mission}</dd>
+710:            </dl>
+711:            <div className="subsection-title">Capabilities</div>
+712:            <div className="capabilities">
+713:              {selected.capabilities.map((capability) => (
+714:                <code key={capability}>{capability}</code>
+715:              ))}
+716:            </div>
+717:          </div>
+718:          <div>
+719:            <div className="subsection-title">Trust dimensions</div>
+720:            <div className="overall-trust">
+721:              <strong>{selected.trust}</strong>
+722:              <div>
+723:                <span>Overall trust</span>
+724:                <Status value={selected.tier} />
+725:              </div>
+726:            </div>
+727:            {Object.entries(selected.dimensions).map(([label, value]) => (
+728:              <div className="dimension" key={label}>
+729:                <div>
+730:                  <span>{label}</span>
+731:                  <b>{value}</b>
+732:                </div>
+733:                <div>
+734:                  <span className={`progress-${value}`} />
+735:                </div>
+736:              </div>
+737:            ))}
+738:          </div>
+739:        </div>
+740:      </section>
+741:    </div>
+742:  )
+743:}
+744:
+745:function IncidentView({ go }: { go: (view: View) => void }) {
+746:  const timeline = replayEvents.slice(2, 8)
+747:  return (
+748:    <div className="page">
+749:      <PageHeader
+750:        eyebrow="Incidents / INC-2025-0042"
+751:        title="Unauthorized data export attempt"
+752:        description="Researcher-01 deviated from its active mission after consuming untrusted content."
+753:      >
+754:        <Button variant="secondary">
+755:          <Icon name="copy" size={14} />
+756:          Export evidence
+757:        </Button>
+758:        <Button variant="primary" onClick={() => go("replay")}>
+759:          Open replay
+760:        </Button>
+761:      </PageHeader>
+762:      <div className="incident-layout">
+763:        <div>
+764:          <section className="panel decision-summary">
+765:            <div className="decision-top">
+766:              <Status value="Critical" />
+767:              <strong>Contained</strong>
+768:              <span>Detected 10:31:06 UTC · contained in 19 ms</span>
+769:            </div>
+770:            <div className="decision-grid">
+771:              <div>
+772:                <span>Attempted action</span>
+773:                <code>database.export("customers")</code>
+774:              </div>
+775:              <div>
+776:                <span>Decision</span>
+777:                <strong className="critical-text">Deny + quarantine</strong>
+778:              </div>
+779:              <div>
+780:                <span>Reason code</span>
+781:                <code>MISSION_VIOLATION</code>
+782:              </div>
+783:              <div>
+784:                <span>Mission alignment</span>
+785:                <strong>0.02 / 1.00</strong>
+786:              </div>
+787:              <div>
+788:                <span>Policy version</span>
+789:                <code>mission-integrity@v1.8</code>
+790:              </div>
+791:              <div>
+792:                <span>Risk score</span>
+793:                <strong>98 / 100</strong>
+794:              </div>
+795:            </div>
+796:          </section>
+797:          <section className="panel incident-timeline">
+798:            <div className="section-heading">
+799:              <div>
+800:                <strong>Evidence timeline</strong>
+801:                <span>Chronological reconstruction from signed events</span>
+802:              </div>
+803:            </div>
+804:            {timeline.map((item, index) => (
+805:              <div
+806:                className={`timeline-row ${
+807:                  index >= 2 && index <= 4 ? "alerting" : ""
+808:                }`}
+809:                key={item.time}
+810:              >
+811:                <code>{item.time}</code>
+812:                <span className="timeline-marker" />
+813:                <div>
+814:                  <strong>{item.title}</strong>
+815:                  <p>{item.description}</p>
+816:                  <small>
+817:                    {item.agent} · {item.policy}
+818:                  </small>
+819:                </div>
+820:              </div>
+821:            ))}
+822:          </section>
+823:          <section className="panel policy-panel">
+824:            <div className="section-heading">
+825:              <div>
+826:                <strong>Policy evaluation</strong>
+827:                <span>Facts evaluated at sequence #18399</span>
+828:              </div>
+829:            </div>
+830:            {[
+831:              [
+832:                "Identity and token",
+833:                "Passed",
+834:                "Ed25519 signature and session token valid",
+835:              ],
+836:              [
+837:                "Mission contract",
+838:                "Violation",
+839:                "database.export explicitly forbidden",
+840:              ],
+841:              [
+842:                "Current plan",
+843:                "Violation",
+844:                "Step 02 permits web.search and web.read only",
+845:              ],
+846:              [
+847:                "Provenance",
+848:                "Violation",
+849:                "Action influenced by untrusted content",
+850:              ],
+851:              [
+852:                "Behavior",
+853:                "High risk",
+854:                "New tool and abnormal argument pattern",
+855:              ],
+856:              ["OPA result", "Deny", "Block, revoke token, quarantine, alert"],
+857:            ].map(([group, result, detail]) => (
+858:              <div className="policy-row" key={group}>
+859:                <strong>{group}</strong>
+860:                <Status
+861:                  value={
+862:                    result === "Passed"
+863:                      ? "Verified"
+864:                      : result === "High risk"
+865:                        ? "High"
+866:                        : result === "Deny"
+867:                          ? "Block"
+868:                          : "Critical"
+869:                  }
+870:                />
+871:                <span>{detail}</span>
+872:                <Icon name="chevron" size={14} />
+873:              </div>
+874:            ))}
+875:          </section>
+876:        </div>
+877:        <aside>
+878:          <section className="panel response-panel">
+879:            <div className="section-heading">
+880:              <div>
+881:                <strong>Response status</strong>
+882:                <span>Automated containment complete</span>
+883:              </div>
+884:            </div>
+885:            <div className="containment-state">
+886:              <Icon name="shield" size={20} />
+887:              <div>
+888:                <strong>Threat contained</strong>
+889:                <span>Workflow remains operational</span>
+890:              </div>
+891:            </div>
+892:            {[
+893:              "Action blocked",
+894:              "Capability token revoked",
+895:              "Agent quarantined",
+896:              "Task reassigned to Planner-01",
+897:            ].map((item, index) => (
+898:              <div className="response-step" key={item}>
+899:                <Icon name="check" size={14} />
+900:                <span>{item}</span>
+901:                <code>
+902:                  10:31:0{index === 3 ? "7.102" : `6.9${21 + index * 10}`}
+903:                </code>
+904:              </div>
+905:            ))}
+906:            <div className="trust-impact">
+907:              <span>Trust impact</span>
+908:              <div>
+909:                <strong>94</strong>
+910:                <Icon name="chevron" />
+911:                <strong className="critical-text">34</strong>
+912:              </div>
+913:              <small>Compliance −30 · Integrity −50</small>
+914:            </div>
+915:          </section>
+916:          <section className="panel lineage-panel">
+917:            <div className="section-heading">
+918:              <div>
+919:                <strong>Taint lineage</strong>
+920:                <span>Recorded provenance path</span>
+921:              </div>
+922:            </div>
+923:            {[
+924:              "Untrusted web page",
+925:              "Researcher-01",
+926:              "database.export",
+927:              "Blocked at PEP",
+928:            ].map((item, index) => (
+929:              <div className={index === 2 ? "danger-node" : ""} key={item}>
+930:                <span>{index + 1}</span>
+931:                <strong>{item}</strong>
+932:                {index < 3 && <Icon name="chevron" size={14} />}
+933:              </div>
+934:            ))}
+935:          </section>
+936:        </aside>
+937:      </div>
+938:    </div>
+939:  )
+940:}
+941:
+942:function ReplayView() {
+943:  const [selected, setSelected] = useState(5)
+944:  const [playing, setPlaying] = useState(false)
+945:  const [speed, setSpeed] = useState("1×")
+946:  useEffect(() => {
+947:    if (!playing) return
+948:    const timer = window.setInterval(
+949:      () =>
+950:        setSelected((value) =>
+951:          value >= replayEvents.length - 1 ? 0 : value + 1,
+952:        ),
+953:      speed === "2×" ? 600 : 1200,
+954:    )
+955:    return () => window.clearInterval(timer)
+956:  }, [playing, speed])
+957:  const item = replayEvents[selected]
+958:  return (
+959:    <div className="page replay-page">
+960:      <PageHeader
+961:        eyebrow="Sessions / SESS-001 / Replay"
+962:        title="Forensic replay"
+963:        description="Deterministic reconstruction using recorded state and policy versions."
+964:      >
+965:        <Status value="Verified" />
+966:      </PageHeader>
+967:      <div className="replay-layout">
+968:        <section className="panel replay-events">
+969:          <div className="section-heading">
+970:            <div>
+971:              <strong>Session events</strong>
+972:              <span>{replayEvents.length} recorded events</span>
+973:            </div>
+974:          </div>
+975:          {replayEvents.map((event, index) => (
+976:            <Button
+977:              key={event.time}
+978:              className={`replay-row ${index === selected ? "selected" : ""}`}
+979:              onClick={() => setSelected(index)}
+980:            >
+981:              <code>#{18395 + index}</code>
+982:              <span>
+983:                <strong>{event.title}</strong>
+984:                <small>
+985:                  {event.time} · {event.agent}
+986:                </small>
+987:              </span>
+988:              {index >= 4 && index <= 6 && <span className="event-alert" />}
+989:            </Button>
+990:          ))}
+991:        </section>
+992:        <section className="panel replay-canvas">
+993:          <div className="canvas-head">
+994:            <span>
+995:              State at <code>{item.time}</code>
+996:            </span>
+997:            <small>
+998:              Event {selected + 1} of {replayEvents.length}
+999:            </small>
+1000:          </div>
+1001:          <div className="agent-flow">
+1002:            <div className="flow-agent">
+1003:              <span>P</span>
+1004:              <strong>Planner-01</strong>
+1005:              <Status value="Active" />
+1006:            </div>
+1007:            <Icon name="chevron" />
+1008:            <div
+1009:              className={`flow-agent ${
+1010:                item.agent === "Researcher-01" ? "focused" : ""
+1011:              }`}
+1012:            >
+1013:              <span>R</span>
+1014:              <strong>Researcher-01</strong>
+1015:              <Status value={item.state} />
+1016:            </div>
+1017:            <Icon name="chevron" />
+1018:            <div className="flow-agent">
+1019:              <span>E</span>
+1020:              <strong>Executor-01</strong>
+1021:              <Status value="Active" />
+1022:            </div>
+1023:          </div>
+1024:          <div className="selected-event">
+1025:            <span>Selected event</span>
+1026:            <strong>{item.title}</strong>
+1027:            <p>{item.description}</p>
+1028:          </div>
+1029:          <div className="scrubber">
+1030:            <div>
+1031:              {replayEvents.map((_, index) => (
+1032:                <Button
+1033:                  key={index}
+1034:                  className={`${index <= selected ? "passed" : ""} ${
+1035:                    index === selected ? "current" : ""
+1036:                  }`}
+1037:                  title={`Go to event ${index + 1}`}
+1038:                  onClick={() => setSelected(index)}
+1039:                />
+1040:              ))}
+1041:            </div>
+1042:          </div>
+1043:          <div className="playback">
+1044:            <Button
+1045:              variant="secondary"
+1046:              onClick={() => setSelected(Math.max(0, selected - 1))}
+1047:            >
+1048:              Previous
+1049:            </Button>
+1050:            <Button
+1051:              variant="primary"
+1052:              className="play-button"
+1053:              onClick={() => setPlaying(!playing)}
+1054:            >
+1055:              <Icon name={playing ? "pause" : "play"} size={15} />
+1056:              {playing ? "Pause" : "Play"}
+1057:            </Button>
+1058:            <Button
+1059:              variant="secondary"
+1060:              onClick={() =>
+1061:                setSelected(Math.min(replayEvents.length - 1, selected + 1))
+1062:              }
+1063:            >
+1064:              Next
+1065:            </Button>
+1066:            <Select value={speed} onChange={setSpeed} label="Playback speed">
+1067:              <option>1×</option>
+1068:              <option>2×</option>
+1069:            </Select>
+1070:          </div>
+1071:        </section>
+1072:        <aside className="panel state-inspector">
+1073:          <div className="section-heading">
+1074:            <div>
+1075:              <strong>State inspector</strong>
+1076:              <span>Before and after event</span>
+1077:            </div>
+1078:          </div>
+1079:          <dl>
+1080:            <dt>Agent</dt>
+1081:            <dd>{item.agent}</dd>
+1082:            <dt>Agent state</dt>
+1083:            <dd>
+1084:              <Status value={item.state} />
+1085:            </dd>
+1086:            <dt>Trust score</dt>
+1087:            <dd className="state-change">
+1088:              <strong>{item.trustBefore}</strong>
+1089:              <Icon name="chevron" size={14} />
+1090:              <strong
+1091:                className={
+1092:                  item.trustAfter < item.trustBefore ? "critical-text" : ""
+1093:                }
+1094:              >
+1095:                {item.trustAfter}
+1096:              </strong>
+1097:            </dd>
+1098:            <dt>Plan step</dt>
+1099:            <dd>Step 02 · Research</dd>
+1100:            <dt>Policy version</dt>
+1101:            <dd>
+1102:              <code>{item.policy}</code>
+1103:            </dd>
+1104:            <dt>Re-evaluation</dt>
+1105:            <dd>
+1106:              <Status value="Verified" /> Matches recorded decision
+1107:            </dd>
+1108:          </dl>
+1109:          <Button variant="secondary" className="full-width">
+1110:            View signed event
+1111:          </Button>
+1112:        </aside>
+1113:      </div>
+1114:    </div>
+1115:  )
+1116:}
+1117:
+1118:function LedgerView() {
+1119:  const [query, setQuery] = useState("")
+1120:  const [selected, setSelected] = useState<RuntimeEvent>(runtimeEvents[0])
+1121:  const [verifyStep, setVerifyStep] = useState(-1)
+1122:  const checks = [
+1123:    "Checking event hashes",
+1124:    "Checking chain continuity",
+1125:    "Verifying signatures",
+1126:    "Verifying Merkle roots",
+1127:    "Comparing blockchain anchor",
+1128:  ]
+1129:  useEffect(() => {
+1130:    if (verifyStep < 0 || verifyStep >= checks.length) return
+1131:    const timer = window.setTimeout(
+1132:      () => setVerifyStep((value) => value + 1),
+1133:      500,
+1134:    )
+1135:    return () => window.clearTimeout(timer)
+1136:  }, [verifyStep])
+1137:  const filtered = runtimeEvents.filter((event) =>
+1138:    `${event.seq} ${event.type} ${event.agent} ${event.hash}`
+1139:      .toLowerCase()
+1140:      .includes(query.toLowerCase()),
+1141:  )
+1142:  const verifying = verifyStep >= 0 && verifyStep < checks.length
+1143:  const complete = verifyStep >= checks.length
+1144:  return (
+1145:    <div className="page">
+1146:      <PageHeader
+1147:        title="Audit ledger"
+1148:        description="Verify hash-chain continuity, signatures, Merkle proofs, and blockchain anchors."
+1149:      >
+1150:        <Button
+1151:          variant="primary"
+1152:          disabled={verifying}
+1153:          onClick={() => setVerifyStep(0)}
+1154:        >
+1155:          <Icon name={complete ? "check" : "shield"} size={15} />
+1156:          {verifying
+1157:            ? "Verifying…"
+1158:            : complete
+1159:              ? "Verified 18,402 events"
+1160:              : "Verify ledger"}
+1161:        </Button>
+1162:      </PageHeader>
+1163:      {(verifying || complete) && (
+1164:        <section
+1165:          className={`verification-progress ${complete ? "complete" : ""}`}
+1166:          aria-live="polite"
+1167:        >
+1168:          <div>
+1169:            <Icon name={complete ? "check" : "shield"} />
+1170:            <div>
+1171:              <strong>
+1172:                {complete ? "Ledger verification complete" : checks[verifyStep]}
+1173:              </strong>
+1174:              <span>
+1175:                {complete
+1176:                  ? "18,402 events verified in 2.5 seconds · No integrity violations found"
+1177:                  : `Step ${verifyStep + 1} of ${checks.length}`}
+1178:              </span>
+1179:            </div>
+1180:          </div>
+1181:          <div className="verify-track">
+1182:            <span className={`verify-step-${complete ? 5 : verifyStep + 1}`} />
+1183:          </div>
+1184:        </section>
+1185:      )}
+1186:      <section className="ledger-summary">
+1187:        <div>
+1188:          <span>Ledger status</span>
+1189:          <strong>
+1190:            <Status value="Verified" />
+1191:          </strong>
+1192:          <small>Through sequence #18402</small>
+1193:        </div>
+1194:        <div>
+1195:          <span>Hash chain</span>
+1196:          <strong>Continuous</strong>
+1197:          <small>18,402 linked events</small>
+1198:        </div>
+1199:        <div>
+1200:          <span>Current checkpoint</span>
+
+(Showing lines 1-1200 of 1344. Use offset=1201 to continue.)
