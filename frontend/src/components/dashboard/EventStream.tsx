@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { EventLog } from '../../types';
+import { formatTimeIST } from '../../utils/time';
 import { DecisionBadge } from '../common/DecisionBadge';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -67,14 +68,7 @@ export const EventStream: React.FC<EventStreamProps> = ({
   };
 
   const formatTimestamp = (iso?: string) => {
-    if (!iso) return '—';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }) +
-        '.' + String(d.getMilliseconds()).padStart(3, '0');
-    } catch {
-      return iso;
-    }
+    return formatTimeIST(iso, { includeMs: true, includeTz: true });
   };
 
   return (

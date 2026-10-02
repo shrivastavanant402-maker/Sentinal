@@ -31,6 +31,7 @@ import {
   updateAgentStatus as apiUpdateAgentStatus,
 } from "./services/api";
 import { IDEIntegration } from "./pages/IDEIntegration";
+import { formatTimeIST, formatFullDateTimeIST } from "./utils/time";
 
 type IconName =
   | "activity"
@@ -638,7 +639,7 @@ function OperationsView({
               </div>
               <div className="priority-meta">
                 <span>Contained in PEP</span>
-                <small>{new Date(alert.created_at).toLocaleTimeString()}</small>
+                <small>{alert.created_at ? formatTimeIST(alert.created_at) : "10:31:06 IST"}</small>
               </div>
               <Button variant="primary" onClick={() => go("incident")}>
                 Investigate
@@ -656,7 +657,7 @@ function OperationsView({
             </div>
             <div className="priority-meta">
               <span>Contained in 19 ms</span>
-              <small>10:31:06 UTC</small>
+              <small>10:31:06 IST</small>
             </div>
             <Button variant="primary" onClick={() => go("incident")}>
               Investigate
@@ -714,6 +715,8 @@ function OperationsView({
                 </Button>
               </div>
               <dl>
+                <dt>Timestamp</dt>
+                <dd>{selected.timestamp ? formatFullDateTimeIST(selected.timestamp) : selected.time}</dd>
                 <dt>Decision reason</dt>
                 <dd>{selected.reason}</dd>
                 <dt>Event hash</dt>
@@ -1904,7 +1907,8 @@ export default function App() {
           : "Low";
       return {
         seq: be.seq,
-        time: be.timestamp ? be.timestamp.slice(11, 23) : "10:31:00",
+        time: be.timestamp ? formatTimeIST(be.timestamp) : "10:31:00 IST",
+        timestamp: be.timestamp,
         agent: be.agent_id,
         type: be.event_type.replace(/_/g, " "),
         resource: be.action || "tool.call",

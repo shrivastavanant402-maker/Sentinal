@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EventLog, Agent, AttackReplayResponse } from '../types';
+import { formatTimeIST, formatFullDateTimeIST } from '../utils/time';
 import { fetchAttackReplay } from '../services/api';
 import { DecisionBadge } from '../components/common/DecisionBadge';
 import { SeverityBadge } from '../components/common/SeverityBadge';
@@ -355,7 +356,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     </div>
 
                     <div className="mt-1 flex items-center justify-between text-[11px] text-muted font-mono">
-                      <span>{new Date(event.timestamp).toLocaleTimeString()}</span>
+                      <span>{formatTimeIST(event.timestamp)}</span>
                       <span className="truncate max-w-[120px]">{event.id.slice(0, 8)}...</span>
                     </div>
                   </div>
@@ -435,7 +436,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                       </div>
                       <span className="font-mono text-xs text-muted flex items-center gap-1">
                         <Clock size={12} />
-                        {new Date(replayData.timestamp).toLocaleString()}
+                        {formatFullDateTimeIST(replayData.timestamp)}
                       </span>
                     </div>
 

@@ -22,6 +22,7 @@ export interface FigmaAgent {
 export interface RuntimeEvent {
   seq: number;
   time: string;
+  timestamp?: string;
   agent: string;
   type: string;
   resource: string;

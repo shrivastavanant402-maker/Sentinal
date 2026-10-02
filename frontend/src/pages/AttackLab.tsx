@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Agent, AttackScenarioType, AttackStatus, AttackResult } from '../types';
+import { formatFullDateTimeIST } from '../utils/time';
 import { simulateAttack } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { DecisionBadge } from '../components/common/DecisionBadge';
@@ -533,7 +534,7 @@ export const AttackLab: React.FC<AttackLabProps> = ({
 
                 {/* Footer bar */}
                 <div className="attack-result-footer mt-4 pt-3 border-t border-border-color flex items-center justify-between text-xs text-muted font-mono">
-                  <span>Timestamp: {attackResult.timestamp ? new Date(attackResult.timestamp).toLocaleString() : '—'}</span>
+                  <span>Timestamp: {attackResult.timestamp ? formatFullDateTimeIST(attackResult.timestamp) : '—'}</span>
                   <span className="text-emerald flex items-center gap-1">
                     <FileCheck size={13} /> IMMUTABLE EVIDENCE RECORDED
                   </span>

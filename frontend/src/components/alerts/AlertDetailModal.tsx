@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Alert, EventLog, AttackReplayResponse } from '../../types';
+import { formatFullDateTimeIST } from '../../utils/time';
 import { SeverityBadge } from '../common/SeverityBadge';
 import { DecisionBadge } from '../common/DecisionBadge';
 import { fetchAttackReplay } from '../../services/api';
@@ -53,20 +54,7 @@ export const AlertDetailModal: React.FC<AlertDetailModalProps> = ({
   };
 
   const formatTimestamp = (iso?: string) => {
-    if (!iso) return '—';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString([], {
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-    } catch {
-      return iso;
-    }
+    return formatFullDateTimeIST(iso);
   };
 
   // Fetch replay/ledger evidence whenever alert or its event_id changes

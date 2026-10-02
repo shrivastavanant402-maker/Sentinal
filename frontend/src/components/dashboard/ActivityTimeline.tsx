@@ -1,5 +1,6 @@
 import React from 'react';
 import { EventLog, Alert } from '../../types';
+import { formatTimeIST } from '../../utils/time';
 import { Clock, ShieldAlert, Cpu, FileText, UserPlus, AlertOctagon } from 'lucide-react';
 import { EmptyState } from '../common/EmptyState';
 
@@ -68,12 +69,7 @@ export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({
   }, [events, alerts]);
 
   const formatTime = (iso: string) => {
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch {
-      return iso;
-    }
+    return formatTimeIST(iso);
   };
 
   const getItemIcon = (item: TimelineItem) => {
