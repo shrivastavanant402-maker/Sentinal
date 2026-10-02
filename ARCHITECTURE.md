@@ -1662,7 +1662,7 @@ aegismesh/
 ├── ARCHITECTURE.md
 ├── README.md
 ├── .env.example
-├── docker-compose.yml
+├── 
 ├── Makefile
 │
 ├── backend/
@@ -2138,7 +2138,7 @@ These require coordination:
 ``` text
 ARCHITECTURE.md
 README.md
-docker-compose.yml
+
 openapi/schema
 backend/app/schemas/*
 ```
@@ -2320,7 +2320,7 @@ Do not build everything in parallel.
 ``` text
 Repository
 Docker Compose
-Postgres
+Supabase PostgreSQL
 Redis
 FastAPI
 Pydantic schemas
