@@ -1821,8 +1821,8 @@ export default function App() {
       const [hData, aData, eData, alData, lData] = await Promise.all([
         fetchHealth().catch(() => ({ status: "offline" })),
         fetchAgents().catch(() => []),
-        fetchEvents(100).catch(() => []),
-        fetchAlerts(100).catch(() => []),
+        fetchEvents(1000).catch(() => []),
+        fetchAlerts(1000).catch(() => []),
         apiVerifyLedger().catch(() => null),
       ]);
       setHealth(hData as HealthStatus);
@@ -1877,7 +1877,8 @@ export default function App() {
   // Map Backend Events to Figma RuntimeEvent format, merging with seed events
   const mergedRuntimeEvents: RuntimeEvent[] = useMemo(() => {
     if (backendEvents.length === 0) return seedRuntimeEvents;
-    return backendEvents.map((be) => {
+    const sorted = [...backendEvents].sort((a, b) => (b.seq ?? 0) - (a.seq ?? 0));
+    return sorted.map((be) => {
       const rawDecision = (
         be.decision?.status ||
         be.decision?.decision ||
