@@ -1,6 +1,7 @@
 from .agent import AgentCreate, AgentResponse, AgentStatus
 from .event import EventCreate, EventResponse, EventType
 from .alert import AlertCreate, AlertResponse, AlertSeverity
+from .decision import ActionRequest, DecisionResponse, DecisionStatus, DecisionReason, RiskLevel
 
 __all__ = [
     "AgentCreate",
@@ -12,4 +13,9 @@ __all__ = [
     "AlertCreate",
     "AlertResponse",
     "AlertSeverity",
+    "ActionRequest",
+    "DecisionResponse",
+    "DecisionStatus",
+    "DecisionReason",
+    "RiskLevel",
 ]

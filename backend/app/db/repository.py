@@ -157,7 +157,8 @@ class InMemoryRepository(BaseRepository):
                 action=event.action,
                 payload=event.payload,
                 timestamp=ts,
-                session_id=event.session_id
+                session_id=event.session_id,
+                decision=event.decision
             )
 
             # 2. Hash chaining from previous event
@@ -295,7 +296,8 @@ class SupabaseRepository(BaseRepository):
                 action=event.action,
                 payload=event.payload,
                 timestamp=ts,
-                session_id=event.session_id
+                session_id=event.session_id,
+                decision=event.decision
             )
 
             latest = await self.get_latest_event()

@@ -56,7 +56,8 @@ def verify_ledger_chain(events: List[Dict[str, Any]]) -> Dict[str, Any]:
             action=action,
             payload=payload,
             timestamp=timestamp,
-            session_id=session_id
+            session_id=session_id,
+            decision=ev.get("decision", {})
         )
 
         recorded_content_hash = ev.get("content_hash")

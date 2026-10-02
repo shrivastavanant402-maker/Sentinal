@@ -36,10 +36,12 @@ def calculate_content_hash(
     action: str,
     payload: Dict[str, Any],
     timestamp: datetime,
-    session_id: str | None = None
+    session_id: str | None = None,
+    decision: Dict[str, Any] | None = None
 ) -> str:
     """
     Calculates content_hash of the event prior to ledger sequencing and chaining.
+    Includes the security decision to guarantee tamper-proof ledger integrity.
     """
     content_dict = {
         "id": event_id,
@@ -48,7 +50,8 @@ def calculate_content_hash(
         "action": action,
         "payload": payload,
         "session_id": session_id or "",
-        "timestamp": timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp)
+        "timestamp": timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp),
+        "decision": decision or {}
     }
     return compute_sha256(to_canonical_json(content_dict))
 
