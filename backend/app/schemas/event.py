@@ -12,6 +12,7 @@ class EventType(str, Enum):
     TOOL_CALL_RESPONSE = "tool_call_response"
     STATUS_CHANGED = "status_changed"
     ALERT_TRIGGERED = "alert_triggered"
+    ENFORCEMENT = "enforcement"
 
 
 class EventCreate(BaseModel):

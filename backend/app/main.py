@@ -9,6 +9,7 @@ from backend.app.api.agents import router as agents_router
 from backend.app.api.events import router as events_router
 from backend.app.api.ledger import router as ledger_router
 from backend.app.api.alerts import router as alerts_router
+from backend.app.api.enforcement import router as enforcement_router
 from backend.app.db.repository import get_repository
 from backend.app.schemas.agent import AgentCreate
 
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(events_router)
     app.include_router(ledger_router)
     app.include_router(alerts_router)
+    app.include_router(enforcement_router)
 
     # Also mount under /api/v1 for standard API versioning
     app.include_router(health_router, prefix="/api/v1")
@@ -97,6 +99,7 @@ def create_app() -> FastAPI:
     app.include_router(events_router, prefix="/api/v1")
     app.include_router(ledger_router, prefix="/api/v1")
     app.include_router(alerts_router, prefix="/api/v1")
+    app.include_router(enforcement_router, prefix="/api/v1")
 
     return app
 
