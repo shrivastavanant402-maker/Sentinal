@@ -54,6 +54,7 @@
 - [Developer 2] Created test_attacks_api.py with 8 comprehensive unit and integration tests covering all scenarios, alert linkage, and ledger integrity (2026-10-02)
 - [Developer 1] Completed Step 5 Verification: Fixed dead variable in trust recovery, made repository authoritative for quarantine queries, and added 6 security boundary tests (2026-10-02)
 - [Developer 1] Completed Runtime Security Step 6: Provenance/Taint Tracking and Mission Drift Detection. Enhanced ProvenanceTracker with integer severity ranking, cross-agent lineage propagation, and source helpers. Hardened PDP decision precedence ensuring default-deny BLOCK is never weakened to APPROVAL. Added test_step6_provenance_drift.py with 24 dedicated tests covering all provenance, drift, and integration invariants. Created scripts/verify_step6.py E2E verifier (2026-10-02)
+- [Developer 2] Completed Checkpoint 2: Connected Attack Lab UI to real backend POST /attacks/simulate API with live telemetry, error handling, and SOC data refresh (2026-10-02)
 
 ## In Progress
 

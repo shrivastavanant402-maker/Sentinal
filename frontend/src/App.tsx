@@ -153,6 +153,7 @@ export default function App() {
           <AttackLab
             agents={agents}
             isLoading={isLoading}
+            onRefresh={loadData}
           />
         )}
       </main>

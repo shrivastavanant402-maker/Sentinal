@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Agent, AttackScenarioType, AttackStatus, AttackResult } from '../types';
+import { simulateAttack } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { DecisionBadge } from '../components/common/DecisionBadge';
+import { SeverityBadge } from '../components/common/SeverityBadge';
 import { EmptyState } from '../components/common/EmptyState';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import {
@@ -15,11 +18,19 @@ import {
   Info,
   Layers,
   ArrowRight,
+  AlertTriangle,
+  CheckCircle2,
+  XCircle,
+  FileCheck,
+  Shield,
+  Activity,
+  X,
 } from 'lucide-react';
 
 interface AttackLabProps {
   agents: Agent[];
   isLoading?: boolean;
+  onRefresh?: () => void;
 }
 
 interface ScenarioConfig {
@@ -68,29 +79,49 @@ const ATTACK_SCENARIOS: ScenarioConfig[] = [
 export const AttackLab: React.FC<AttackLabProps> = ({
   agents,
   isLoading = false,
+  onRefresh,
 }) => {
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [selectedScenario, setSelectedScenario] = useState<AttackScenarioType | ''>('');
   const [attackStatus, setAttackStatus] = useState<AttackStatus>('ready');
   const [attackResult, setAttackResult] = useState<AttackResult | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
-  const isLaunchReady = selectedAgentId !== '' && selectedScenario !== '' && attackStatus !== 'running';
+  const isLaunchReady =
+    selectedAgentId !== '' &&
+    selectedScenario !== '' &&
+    attackStatus !== 'running';
 
-  const handleLaunchAttack = () => {
-    if (!isLaunchReady || !selectedScenario) return;
+  const handleLaunchAttack = async () => {
+    if (!isLaunchReady || !selectedScenario || !selectedAgentId) return;
 
-    // Operator triggers assessment setup.
-    // In this foundation phase, we transition status to 'ready' and initialize the result structure.
-    // Real backend attack trigger will connect to the backend pipeline in the next step.
-    setAttackStatus('ready');
-    setAttackResult({
-      scenario: selectedScenario,
-      target_agent_id: selectedAgentId,
-      status: 'ready',
-      message: `Attack scenario prepared for ${selectedAgentId}. Backend execution pipeline will execute this test vector.`,
-      timestamp: new Date().toISOString(),
-    });
+    // Transition to running state, clear previous results & errors
+    setAttackStatus('running');
+    setAttackResult(null);
+    setErrorMessage(null);
+
+    try {
+      // Execute attack simulation via real backend security pipeline
+      const response = await simulateAttack({
+        agent_id: selectedAgentId,
+        scenario: selectedScenario,
+      });
+
+      setAttackResult(response);
+      setAttackStatus('completed');
+
+      // Refresh SOC telemetry (events, alerts, agents)
+      if (onRefresh) {
+        onRefresh();
+      }
+    } catch (err: any) {
+      setAttackStatus('failed');
+      setErrorMessage(
+        err.message || 'Attack simulation request failed. Please check backend connectivity.'
+      );
+      setAttackResult(null);
+    }
   };
 
   const getStatusBadgeClass = (status: AttackStatus) => {
@@ -134,6 +165,25 @@ export const AttackLab: React.FC<AttackLabProps> = ({
         </div>
       </div>
 
+      {/* Operator error banner */}
+      {errorMessage && (
+        <div className="p-3 rounded border border-rose-glow bg-rose-subtle text-rose flex items-center justify-between text-xs mb-4">
+          <div className="flex items-center gap-2">
+            <AlertTriangle size={16} />
+            <span>
+              <strong>Simulation Error:</strong> {errorMessage}
+            </span>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-muted hover:text-white transition-colors"
+            title="Dismiss error"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
+
       {/* Main configuration grid */}
       <div className="attack-lab-grid">
         {/* Left Column: Target Agent & Attack Scenario Selection */}
@@ -169,6 +219,7 @@ export const AttackLab: React.FC<AttackLabProps> = ({
                   <select
                     value={selectedAgentId}
                     onChange={e => setSelectedAgentId(e.target.value)}
+                    disabled={attackStatus === 'running'}
                     className="agent-select-input font-mono text-sm"
                   >
                     <option value="">-- Choose Target Agent --</option>
@@ -210,8 +261,12 @@ export const AttackLab: React.FC<AttackLabProps> = ({
                   return (
                     <div
                       key={scenario.id}
-                      onClick={() => setSelectedScenario(scenario.id)}
-                      className={`scenario-card cursor-pointer ${isSelected ? 'scenario-card-active' : ''}`}
+                      onClick={() => {
+                        if (attackStatus !== 'running') {
+                          setSelectedScenario(scenario.id);
+                        }
+                      }}
+                      className={`scenario-card cursor-pointer ${isSelected ? 'scenario-card-active' : ''} ${attackStatus === 'running' ? 'opacity-60 cursor-not-allowed' : ''}`}
                     >
                       <div className="scenario-header">
                         <div className="flex items-center gap-2">
@@ -219,6 +274,7 @@ export const AttackLab: React.FC<AttackLabProps> = ({
                             type="radio"
                             name="attack_scenario"
                             checked={isSelected}
+                            disabled={attackStatus === 'running'}
                             onChange={() => setSelectedScenario(scenario.id)}
                             className="scenario-radio"
                           />
@@ -251,12 +307,21 @@ export const AttackLab: React.FC<AttackLabProps> = ({
                 disabled={!isLaunchReady}
                 className={`btn btn-launch-attack w-full ${isLaunchReady ? 'btn-launch-ready' : 'btn-launch-disabled'}`}
               >
-                <Play size={16} className={isLaunchReady ? 'text-white' : 'text-muted'} />
-                <span>LAUNCH ATTACK</span>
-                <ArrowRight size={14} className="ml-1" />
+                {attackStatus === 'running' ? (
+                  <>
+                    <LoadingSpinner inline />
+                    <span>EXECUTING ATTACK PIPELINE...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play size={16} className={isLaunchReady ? 'text-white' : 'text-muted'} />
+                    <span>LAUNCH ATTACK</span>
+                    <ArrowRight size={14} className="ml-1" />
+                  </>
+                )}
               </button>
 
-              {!isLaunchReady && (
+              {!isLaunchReady && attackStatus !== 'running' && (
                 <p className="text-xs text-muted text-center mt-2 font-mono">
                   Select both an agent and an attack scenario to enable launch
                 </p>
@@ -284,7 +349,7 @@ export const AttackLab: React.FC<AttackLabProps> = ({
           <div className="panel-body">
             {attackStatus === 'running' ? (
               <div className="p-8">
-                <LoadingSpinner label="Executing attack scenario through security pipeline..." />
+                <LoadingSpinner label="Submitting attack vector to Policy Enforcement Point..." />
               </div>
             ) : !attackResult ? (
               <EmptyState
@@ -296,16 +361,21 @@ export const AttackLab: React.FC<AttackLabProps> = ({
               <div className="attack-result-content">
                 {/* Result Status Banner */}
                 <div className="result-status-banner">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <Clock size={14} className="text-cyan" />
                       <span className="font-mono text-xs font-semibold text-white">
-                        SCENARIO: {attackResult.scenario.toUpperCase()}
+                        SCENARIO: {attackResult.scenario.toUpperCase().replace('_', ' ')}
                       </span>
                     </div>
-                    <span className="font-mono text-xs text-muted">
-                      Target: <strong className="text-white">{attackResult.target_agent_id}</strong>
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-muted">
+                        Target: <strong className="text-white">{attackResult.target_agent_id || attackResult.agent_id}</strong>
+                      </span>
+                      <span className={`status-badge ${getStatusBadgeClass(attackStatus)} font-mono text-xs uppercase ml-2`}>
+                        {attackStatus}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-xs text-secondary mt-2">
@@ -313,80 +383,160 @@ export const AttackLab: React.FC<AttackLabProps> = ({
                   </p>
                 </div>
 
-                {/* Prepared Outcome Fields */}
+                {/* Core Telemetry Grid */}
                 <div className="result-sections-grid mt-4">
-                  {/* Event & Decision Box */}
+                  {/* 1. PEP Decision Box */}
                   <div className="result-box">
                     <span className="result-box-title">
-                      <Terminal size={12} className="inline mr-1 text-cyan" />
-                      Ledger Event & PEP Decision
+                      <Shield size={12} className="inline mr-1 text-cyan" />
+                      PEP Security Decision
                     </span>
-                    {attackResult.decision ? (
-                      <div className="font-mono text-xs text-secondary">
-                        Decision: {JSON.stringify(attackResult.decision)}
+                    <div className="flex items-center gap-3 mt-1">
+                      <DecisionBadge
+                        decision={{
+                          decision: attackResult.decision,
+                          allowed: attackResult.allowed,
+                          status: attackResult.decision,
+                        }}
+                        size="md"
+                      />
+                      <div className="flex flex-col text-xs font-mono">
+                        <span className="text-muted">Allowed:</span>
+                        {attackResult.allowed ? (
+                          <span className="flex items-center gap-1 text-emerald font-semibold">
+                            <CheckCircle2 size={12} /> YES (Permitted)
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-rose font-semibold">
+                            <XCircle size={12} /> NO (Blocked)
+                          </span>
+                        )}
                       </div>
-                    ) : (
-                      <div className="text-xs text-muted italic font-mono">
-                        Awaiting backend PEP evaluation...
+                    </div>
+                  </div>
+
+                  {/* 2. Risk & Enforcement Outcome Box */}
+                  <div className="result-box">
+                    <span className="result-box-title">
+                      <Activity size={12} className="inline mr-1 text-amber" />
+                      Risk & Enforcement Outcome
+                    </span>
+                    <div className="flex items-center justify-between mt-1">
+                      <div className="flex flex-col text-xs font-mono">
+                        <span className="text-muted">Risk Level:</span>
+                        <SeverityBadge severity={attackResult.risk_level} size="sm" />
+                      </div>
+                      <div className="flex flex-col text-xs font-mono text-right">
+                        <span className="text-muted">Action/Tool:</span>
+                        <span className="text-cyan font-semibold">{attackResult.action}</span>
+                      </div>
+                    </div>
+                    <div className="text-xs font-mono text-secondary mt-2 pt-1 border-t border-white/5">
+                      <span className="text-muted">Outcome: </span>
+                      <span className="text-white font-semibold">{attackResult.enforcement_outcome}</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Decision Rationale Box */}
+                  <div className="result-box col-span-2">
+                    <span className="result-box-title">
+                      <Terminal size={12} className="inline mr-1 text-indigo" />
+                      Policy Rationale & Rule Assessment
+                    </span>
+                    <div className="font-mono text-xs text-secondary mt-1">
+                      <span className="text-muted">Reason: </span>
+                      <span className="soc-badge font-mono text-xs ml-1 text-white">
+                        {attackResult.reason}
+                      </span>
+                    </div>
+                    {attackResult.details && Object.keys(attackResult.details).length > 0 && (
+                      <div className="text-xs text-muted font-mono mt-2 p-2 rounded bg-black/30 border border-white/5 overflow-x-auto">
+                        <pre className="text-muted text-xs leading-relaxed whitespace-pre-wrap">
+                          {JSON.stringify(attackResult.details, null, 2)}
+                        </pre>
                       </div>
                     )}
                   </div>
 
-                  {/* Security Alert Box */}
-                  <div className="result-box">
-                    <span className="result-box-title">
-                      <ShieldAlert size={12} className="inline mr-1 text-amber" />
-                      Triggered Alerts
-                    </span>
-                    {attackResult.alert ? (
-                      <div className="font-mono text-xs text-secondary">
-                        Alert: {attackResult.alert.message}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted italic font-mono">
-                        No alert emitted yet
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Trust Score Delta Box */}
-                  <div className="result-box">
-                    <span className="result-box-title">
-                      <Info size={12} className="inline mr-1 text-indigo" />
-                      Trust Score Delta
-                    </span>
-                    {attackResult.trust_change ? (
-                      <div className="font-mono text-xs text-secondary">
-                        {attackResult.trust_change.previous_score} → {attackResult.trust_change.new_score}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-muted italic font-mono">
-                        Baseline trust score maintained
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Enforcement Outcome Box */}
-                  <div className="result-box">
+                  {/* 4. Triggered Alert Box */}
+                  <div className="result-box col-span-2">
                     <span className="result-box-title">
                       <ShieldAlert size={12} className="inline mr-1 text-rose" />
-                      Enforcement Controller Action
+                      Generated Security Alert
                     </span>
-                    {attackResult.enforcement ? (
-                      <div className="font-mono text-xs text-secondary">
-                        Action: {attackResult.enforcement.action} ({attackResult.enforcement.decision})
+                    {attackResult.alert ? (
+                      <div className="alert-result-card p-3 rounded border border-rose/30 bg-rose-subtle mt-1 flex flex-col gap-1">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <span className="font-mono text-xs font-semibold text-white">
+                            {attackResult.alert.alert_type}
+                          </span>
+                          <SeverityBadge severity={attackResult.alert.severity} size="sm" />
+                        </div>
+                        <p className="text-xs text-white/90 mt-1">
+                          {attackResult.alert.message}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-muted font-mono mt-2 pt-2 border-t border-white/5">
+                          <span>Alert ID: {attackResult.alert.id}</span>
+                          <span>Linked Event: {attackResult.alert.event_id || '—'}</span>
+                        </div>
                       </div>
                     ) : (
-                      <div className="text-xs text-muted italic font-mono">
-                        Zero enforcement action pending
+                      <div className="p-3 rounded border border-border-color bg-bg-secondary/40 text-xs text-muted font-mono flex items-center gap-2 mt-1">
+                        <Info size={14} className="text-muted" />
+                        <span>No alert generated</span>
                       </div>
                     )}
+                  </div>
+
+                  {/* 5. Trust Score Delta Box */}
+                  <div className="result-box">
+                    <span className="result-box-title">
+                      <Info size={12} className="inline mr-1 text-emerald" />
+                      Trust Score Telemetry
+                    </span>
+                    <div className="font-mono text-xs text-secondary mt-1">
+                      {attackResult.trust_delta !== null && attackResult.trust_delta !== undefined ? (
+                        <span>
+                          Trust change: {attackResult.trust_delta > 0 ? `+${attackResult.trust_delta}` : attackResult.trust_delta}
+                        </span>
+                      ) : (
+                        <span className="text-muted italic">
+                          Trust change: Not reported by backend
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 6. Cryptographic Evidence Ledger Box */}
+                  <div className="result-box">
+                    <span className="result-box-title">
+                      <FileCheck size={12} className="inline mr-1 text-emerald" />
+                      Ledger Event Reference
+                    </span>
+                    <div className="font-mono text-xs text-secondary mt-1 flex flex-col gap-1">
+                      <div>
+                        <span className="text-muted">Event ID: </span>
+                        {attackResult.event_id ? (
+                          <span className="text-emerald font-semibold break-all">
+                            {attackResult.event_id}
+                          </span>
+                        ) : (
+                          <span className="text-muted italic">Not recorded</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted">
+                        Evidence logged with SHA-256 hash chaining
+                      </div>
+                    </div>
                   </div>
                 </div>
 
+                {/* Footer bar */}
                 <div className="attack-result-footer mt-4 pt-3 border-t border-border-color flex items-center justify-between text-xs text-muted font-mono">
-                  <span>Timestamp: {attackResult.timestamp ? new Date(attackResult.timestamp).toLocaleTimeString() : '—'}</span>
-                  <span>IMMUTABLE EVIDENCE LOGGED</span>
+                  <span>Timestamp: {attackResult.timestamp ? new Date(attackResult.timestamp).toLocaleString() : '—'}</span>
+                  <span className="text-emerald flex items-center gap-1">
+                    <FileCheck size={13} /> IMMUTABLE EVIDENCE RECORDED
+                  </span>
                 </div>
               </div>
             )}
