@@ -1875,15 +1875,24 @@ export default function App() {
   const mergedRuntimeEvents: RuntimeEvent[] = useMemo(() => {
     if (backendEvents.length === 0) return seedRuntimeEvents;
     return backendEvents.map((be) => {
-      const decisionStr = (be.decision?.decision || "").toUpperCase();
+      const rawDecision = (
+        be.decision?.status ||
+        be.decision?.decision ||
+        (be.decision?.allowed === true
+          ? "ALLOW"
+          : be.decision?.allowed === false
+            ? "BLOCK"
+            : "")
+      ).toUpperCase();
+
       const decision: Decision =
-        decisionStr === "ALLOW"
+        rawDecision === "ALLOW"
           ? "Allow"
-          : decisionStr === "APPROVAL"
-          ? "Require approval"
-          : decisionStr === "SANDBOX"
-          ? "Sandbox"
-          : "Block";
+          : rawDecision === "APPROVAL" || rawDecision.includes("APPROV")
+            ? "Require approval"
+            : rawDecision === "SANDBOX"
+              ? "Sandbox"
+              : "Block";
       const riskLevel = (be.decision?.risk_level || "low").toLowerCase();
       const severity =
         riskLevel === "critical"
