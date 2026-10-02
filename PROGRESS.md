@@ -41,11 +41,19 @@
 - All 61 backend tests passing with 100% pass rate (2026-10-02)
 - [Developer 2] Created Attack Lab UI foundation with dynamic agent selector, scenario selection, attack status, and modular result structure (2026-10-02)
 - [Developer 2] Added TypeScript types (AttackScenarioType, AttackStatus, AttackResult) and added Attack Lab to top navigation (2026-10-02)
+- [Developer 1] Completed Phase 2 Step 1: Implemented TrustEngine in backend/app/trust/engine.py with 4-dimension formula (compliance 0.35, integrity 0.25, consistency 0.20, claim_accuracy 0.20) and trust tiers (TRUSTED/WATCHED/RESTRICTED/QUARANTINED) (2026-10-02)
+- [Developer 1] Implemented ProvenanceTracker in backend/app/provenance/tracker.py with taint labeling (CLEAN/UNTRUSTED/SENSITIVE/TAINTED), cross-agent propagation, sink detection, and full audit trail (2026-10-02)
+- [Developer 1] Implemented DriftDetector in backend/app/drift/detector.py (Level 1 rule-based: forbidden=CRITICAL, allowed=NONE, risk-envelope-breach=HIGH, unknown=MODERATE) (2026-10-02)
+- [Developer 1] Implemented QuarantineController in backend/app/enforcement/quarantine.py with auto-quarantine on trust < 40, ledger event emission, and admin release (2026-10-02)
+- [Developer 1] Integrated all 4 Phase 2 modules into PolicyDecisionPoint (10-stage pipeline: identity → quarantine → taint → drift → contract → policy → trust → auto-quarantine) (2026-10-02)
+- [Developer 1] Added REST API: GET/POST /trust, GET/POST /quarantine, GET /provenance/taint-hits (2026-10-02)
+- [Developer 1] Created backend/tests/test_phase2_security.py with 28 tests (trust: 8, provenance: 7, drift: 7, quarantine: 3, PDP integration: 3) (2026-10-02)
+- All 89 backend tests passing with 100% pass rate (2026-10-02)
 
 ## In Progress
 
 ## Next
-- Phase 2: Feature modules (trust scoring engine, data provenance/taint tracking, mission drift detection, quarantine controller) (2026-10-02)
+- Phase 3: Ed25519 agent identity + capability tokens, behavioral anomaly detection (EWMA), WebSocket live event stream, forensic replay API (2026-10-02)
 
 ## Known Bugs
 - None (2026-10-02)
