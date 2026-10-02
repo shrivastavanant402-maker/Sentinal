@@ -67,7 +67,7 @@ export const AlertList: React.FC<AlertListProps> = ({
             <th>Reason / Violation Details</th>
             <th style={{ width: '180px' }}>Timestamp</th>
             <th style={{ width: '120px' }}>Status</th>
-            <th style={{ width: '60px' }}></th>
+            <th style={{ width: '130px' }} className="text-right">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -118,8 +118,16 @@ export const AlertList: React.FC<AlertListProps> = ({
                   </span>
                 </td>
                 <td className="text-right">
-                  <button className="btn-icon">
-                    <ChevronRight size={15} />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectAlert(alert);
+                    }}
+                    className="btn btn-secondary btn-xs font-mono text-[11px] text-cyan hover:text-white inline-flex items-center gap-1"
+                    title="Investigate incident in SOC console"
+                  >
+                    <span>Investigate</span>
+                    <ChevronRight size={12} />
                   </button>
                 </td>
               </tr>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Alert, Agent, AnomalyDetectResponse } from '../types';
+import { Alert, Agent, EventLog, AnomalyDetectResponse } from '../types';
 import { AlertFilters } from '../components/alerts/AlertFilters';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertDetailModal } from '../components/alerts/AlertDetailModal';
@@ -18,6 +18,7 @@ import {
 interface AlertsPageProps {
   alerts: Alert[];
   agents: Agent[];
+  events?: EventLog[];
   isLoading: boolean;
   onRefresh: () => void;
   selectedAlert: Alert | null;
@@ -28,6 +29,7 @@ interface AlertsPageProps {
 export const Alerts: React.FC<AlertsPageProps> = ({
   alerts,
   agents,
+  events = [],
   isLoading,
   onRefresh,
   selectedAlert,
@@ -316,7 +318,16 @@ export const Alerts: React.FC<AlertsPageProps> = ({
                         <Clock size={12} />
                         <span>{new Date(anomaly.timestamp).toLocaleTimeString()}</span>
                         {anomaly.alert_id && (
-                          <span className="text-muted/60">Alert ID: {anomaly.alert_id.slice(0, 8)}...</span>
+                          <button
+                            onClick={() => {
+                              const found = alerts.find(a => a.id === anomaly.alert_id);
+                              if (found) onSelectAlert(found);
+                            }}
+                            className="text-cyan hover:underline cursor-pointer flex items-center gap-1 font-mono text-[11px]"
+                            title="Open Incident Investigation for this alert"
+                          >
+                            <span>Alert #{anomaly.alert_id.slice(0, 8)}...</span>
+                          </button>
                         )}
                       </div>
                     </div>
@@ -351,14 +362,30 @@ export const Alerts: React.FC<AlertsPageProps> = ({
                         ))}
                       </div>
 
-                      <button
-                        onClick={() => onInspectEvent?.(anomaly.latest_event_id)}
-                        className="btn btn-secondary btn-xs flex items-center gap-1 font-mono text-[11px] text-cyan hover:text-white"
-                        title="Replay latest triggering event in Attack Replay"
-                      >
-                        <PlayCircle size={12} className="text-cyan" />
-                        <span>Replay Latest Event</span>
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {anomaly.alert_id && (
+                          <button
+                            onClick={() => {
+                              const found = alerts.find(a => a.id === anomaly.alert_id);
+                              if (found) onSelectAlert(found);
+                            }}
+                            className="btn btn-primary btn-xs flex items-center gap-1 font-mono text-[11px]"
+                            title="Investigate incident in SOC console"
+                          >
+                            <ShieldAlert size={12} />
+                            <span>Investigate Incident</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => onInspectEvent?.(anomaly.latest_event_id)}
+                          className="btn btn-secondary btn-xs flex items-center gap-1 font-mono text-[11px] text-cyan hover:text-white"
+                          title="Replay latest triggering event in Attack Replay"
+                        >
+                          <PlayCircle size={12} className="text-cyan" />
+                          <span>Replay Latest Event</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -388,9 +415,10 @@ export const Alerts: React.FC<AlertsPageProps> = ({
         onRefresh={onRefresh}
       />
 
-      {/* Alert Detail Modal */}
+      {/* Incident Investigation Modal */}
       <AlertDetailModal
         alert={selectedAlert}
+        events={events}
         onClose={() => onSelectAlert(null)}
         onInspectEvent={onInspectEvent}
       />

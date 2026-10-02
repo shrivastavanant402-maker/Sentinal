@@ -167,6 +167,7 @@ export default function App() {
           <Alerts
             alerts={alerts}
             agents={agents}
+            events={events}
             isLoading={isLoading}
             onRefresh={loadData}
             selectedAlert={selectedAlert}
@@ -189,6 +190,7 @@ export default function App() {
             isLoading={isLoading}
             onRefresh={loadData}
             initialEventId={replayEventId}
+            onNavigateToAlerts={() => handleTabChange('alerts')}
           />
         )}
       </main>

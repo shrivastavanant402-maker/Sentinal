@@ -25,6 +25,7 @@ import {
   Layers,
   Info,
   AlertTriangle,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface AttackReplayProps {
@@ -33,6 +34,7 @@ interface AttackReplayProps {
   isLoading?: boolean;
   onRefresh?: () => void;
   initialEventId?: string | null;
+  onNavigateToAlerts?: () => void;
 }
 
 type ScenarioFilter = 'ALL' | 'ENFORCEMENT' | 'PROMPT_INJECTION' | 'SECRET_EXFILTRATION' | 'ROGUE_AGENT';
@@ -50,6 +52,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
   isLoading = false,
   onRefresh,
   initialEventId = null,
+  onNavigateToAlerts,
 }) => {
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId);
   const [replayData, setReplayData] = useState<AttackReplayResponse | null>(null);
@@ -211,6 +214,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {onNavigateToAlerts && (
+            <button
+              onClick={onNavigateToAlerts}
+              className="btn btn-secondary flex items-center gap-1.5 text-xs font-mono"
+              title="Return to Security Alerts & Incidents console"
+            >
+              <ArrowLeft size={13} />
+              <span>BACK TO ALERTS</span>
+            </button>
+          )}
+
           {onRefresh && (
             <button
               onClick={onRefresh}
