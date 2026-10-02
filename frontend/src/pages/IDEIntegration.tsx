@@ -63,10 +63,12 @@ export const IDEIntegration: React.FC<IDEIntegrationProps> = ({ go }) => {
 
   const vscodeConfig = JSON.stringify(
     {
-      "mcp.servers": {
+      servers: {
         aegismesh: {
+          type: "stdio",
           command: "python",
           args: ["scripts/mcp_server.py"],
+          cwd: "${workspaceFolder}",
           env: {
             AEGISMESH_URL: "http://127.0.0.1:8000",
           },
@@ -364,7 +366,7 @@ export const IDEIntegration: React.FC<IDEIntegrationProps> = ({ go }) => {
           <div style={{ marginTop: '10px', fontSize: '11px', color: 'var(--text-3)' }}>
             {activeTab === 'cursor' && 'Add to .cursor/mcp.json in your workspace root, or Cursor Settings > Features > MCP.'}
             {activeTab === 'claude' && 'Add to %APPDATA%/Claude/claude_desktop_config.json on Windows, or ~/Library/Application Support/Claude on Mac.'}
-            {activeTab === 'vscode' && 'Add to your VS Code MCP client extension configuration (e.g. Roo Code / Cline).'}
+            {activeTab === 'vscode' && 'Add to .vscode/mcp.json in your workspace root, or your VS Code MCP client configuration.'}
           </div>
         </div>
       </div>
