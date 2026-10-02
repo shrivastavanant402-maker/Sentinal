@@ -39,3 +39,33 @@ class AttackSimulateResponse(BaseModel):
     model_config = {
         "from_attributes": True
     }
+
+
+class AttackReplayLedgerInfo(BaseModel):
+    seq: int = Field(..., description="Sequence number in hash chain")
+    previous_hash: str = Field(..., description="Previous block hash")
+    content_hash: str = Field(..., description="Payload content hash")
+    event_hash: str = Field(..., description="Merkle/hash-chain block hash")
+    chain_valid: Optional[bool] = Field(None, description="Whether ledger chain is verified valid")
+
+
+class AttackReplayResponse(BaseModel):
+    event_id: str = Field(..., description="Ledger event identifier")
+    agent_id: str = Field(..., description="Target or executing agent ID")
+    event_type: str = Field(..., description="Type of event, e.g. enforcement")
+    action: str = Field(..., description="Action or tool called")
+    decision: Optional[str] = Field(None, description="Enforcement decision: ALLOW, BLOCK, QUARANTINE, APPROVAL")
+    allowed: Optional[bool] = Field(None, description="Whether action was permitted")
+    reason: Optional[str] = Field(None, description="Decision rationale")
+    risk_level: Optional[str] = Field(None, description="Assessed risk level")
+    enforcement_outcome: Optional[str] = Field(None, description="Enforcement outcome statement")
+    resulting_agent_status: Optional[str] = Field(None, description="Status of the agent after enforcement")
+    timestamp: datetime = Field(..., description="Timestamp of the event")
+    payload: Dict[str, Any] = Field(default_factory=dict, description="Event payload data")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Decision diagnostic details")
+    alert: Optional[AlertResponse] = Field(None, description="Linked alert if generated")
+    ledger: AttackReplayLedgerInfo = Field(..., description="Cryptographic hash chain metadata")
+
+    model_config = {
+        "from_attributes": True
+    }

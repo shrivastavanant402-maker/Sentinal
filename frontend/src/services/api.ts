@@ -7,6 +7,7 @@ import {
   HealthStatus,
   AttackSimulateRequest,
   AttackSimulateResponse,
+  AttackReplayResponse,
 } from '../types';
 
 const API_BASE = '';
@@ -94,5 +95,10 @@ export async function simulateAttack(request: AttackSimulateRequest): Promise<At
     body: JSON.stringify(request),
   });
   return handleResponse<AttackSimulateResponse>(res, 'Attack simulation failed');
+}
+
+export async function fetchAttackReplay(eventId: string): Promise<AttackReplayResponse> {
+  const res = await fetch(`${API_BASE}/attacks/replay/${encodeURIComponent(eventId)}`);
+  return handleResponse<AttackReplayResponse>(res, `Failed to fetch attack replay for event ${eventId}`);
 }
 

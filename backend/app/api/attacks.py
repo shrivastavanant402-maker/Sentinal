@@ -2,12 +2,15 @@ from datetime import datetime, timezone
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, HTTPException, status
 from backend.app.api.enforcement import execute_enforcement
 from backend.app.db.repository import get_repository
+from backend.app.ledger.verifier import verify_ledger_chain
 from backend.app.schemas.agent import AgentStatus
 from backend.app.schemas.alert import AlertCreate, AlertResponse, AlertSeverity
 from backend.app.schemas.attack import (
+    AttackReplayLedgerInfo,
+    AttackReplayResponse,
     AttackScenario,
     AttackSimulateRequest,
     AttackSimulateResponse,
@@ -214,4 +217,92 @@ async def simulate_attack(request: AttackSimulateRequest) -> AttackSimulateRespo
         trust_delta=None,
         message=summary_msg,
         timestamp=datetime.now(timezone.utc),
+    )
+
+
+@router.get(
+    "/replay/{event_id}",
+    response_model=AttackReplayResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def replay_attack(event_id: str) -> AttackReplayResponse:
+    """
+    Replays and aggregates existing evidence for a specified event.
+    Returns audit evidence including:
+      - Event metadata, action, payload
+      - PEP decision, rationale, risk level
+      - Linked security alert (if generated)
+      - Cryptographic ledger hash chain evidence
+    """
+    repo = get_repository()
+
+    # 1. Fetch the event
+    event = await repo.get_event(event_id)
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event '{event_id}' not found",
+        )
+
+    # 2. Extract decision details from event.decision dict
+    decision_dict = event.decision or {}
+    decision_val = decision_dict.get("status") or decision_dict.get("decision")
+    allowed_val = decision_dict.get("allowed")
+    reason_val = decision_dict.get("reason")
+    risk_level_val = decision_dict.get("risk_level")
+    details_val = decision_dict.get("details", {})
+
+    # Human-readable enforcement outcome
+    if decision_val == "ALLOW":
+        enforcement_outcome = "Permitted by Policy Enforcement Point"
+    elif decision_val == "QUARANTINE":
+        enforcement_outcome = "Agent Quarantined by Policy Enforcement Point"
+    elif decision_val == "BLOCK":
+        enforcement_outcome = "Blocked by Policy Enforcement Point"
+    elif decision_val:
+        enforcement_outcome = f"{decision_val} by Policy Enforcement Point"
+    else:
+        enforcement_outcome = "Recorded in Audit Ledger"
+
+    # 3. Lookup target agent status if available
+    agent = await repo.get_agent(event.agent_id)
+    resulting_agent_status = agent.status.value if agent else None
+
+    # 4. Lookup linked alert (if any)
+    alerts = await repo.list_alerts(limit=1000)
+    linked_alert: Optional[AlertResponse] = None
+    for a in alerts:
+        if str(a.event_id) == str(event_id):
+            linked_alert = a
+            break
+
+    # 5. Build ledger cryptographic information
+    events = await repo.list_events(limit=10000, offset=0)
+    events_dict = [ev.model_dump() for ev in events]
+    chain_report = verify_ledger_chain(events_dict)
+
+    ledger_info = AttackReplayLedgerInfo(
+        seq=event.seq,
+        previous_hash=event.previous_hash,
+        content_hash=event.content_hash,
+        event_hash=event.event_hash,
+        chain_valid=chain_report.get("chain_valid", True),
+    )
+
+    return AttackReplayResponse(
+        event_id=event.id,
+        agent_id=event.agent_id,
+        event_type=event.event_type,
+        action=event.action,
+        decision=decision_val,
+        allowed=allowed_val,
+        reason=reason_val,
+        risk_level=risk_level_val,
+        enforcement_outcome=enforcement_outcome,
+        resulting_agent_status=resulting_agent_status,
+        timestamp=event.timestamp,
+        payload=event.payload,
+        details=details_val,
+        alert=linked_alert,
+        ledger=ledger_info,
     )

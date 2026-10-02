@@ -1,10 +1,10 @@
 import React from 'react';
-import { Shield, RefreshCw, Activity, AlertTriangle, Layers, Radio, FlaskConical } from 'lucide-react';
+import { Shield, RefreshCw, Activity, AlertTriangle, Layers, Radio, FlaskConical, History } from 'lucide-react';
 import { HealthStatus } from '../../types';
 
 interface HeaderProps {
-  currentTab: 'dashboard' | 'alerts' | 'attack_lab';
-  onTabChange: (tab: 'dashboard' | 'alerts' | 'attack_lab') => void;
+  currentTab: 'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay';
+  onTabChange: (tab: 'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay') => void;
   health: HealthStatus | null;
   activeAgentCount: number;
   totalAgentCount: number;
@@ -72,6 +72,14 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <FlaskConical size={16} />
           <span>Attack Lab</span>
+        </button>
+
+        <button
+          onClick={() => onTabChange('attack_replay')}
+          className={`nav-tab ${currentTab === 'attack_replay' ? 'nav-tab-active' : ''}`}
+        >
+          <History size={16} />
+          <span>Attack Replay</span>
         </button>
       </nav>
 

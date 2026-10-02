@@ -14,6 +14,7 @@ from backend.app.policy.evaluator import RuntimePolicyEvaluator
 from backend.app.schemas.agent import AgentCreate, AgentResponse, AgentStatus
 from backend.app.schemas.contract import ContractCreate
 from backend.app.schemas.decision import DecisionStatus, RiskLevel
+from backend.app.schemas.event import EventCreate
 
 
 @pytest.fixture(autouse=True)
@@ -318,3 +319,134 @@ async def test_ledger_verification_remains_valid_after_attack_simulations():
         assert report["chain_valid"] is True
         assert report["errors"] == []
         assert report["checked"] >= 3
+
+
+# ---------------------------------------------------------------------------
+# Attack Replay Tests
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_replay_existing_enforcement_event():
+    """1. Replay an existing enforcement event."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        sim_resp = await client.post("/attacks/simulate", json={
+            "agent_id": "researcher-01",
+            "scenario": "prompt_injection"
+        })
+        assert sim_resp.status_code == 200
+        event_id = sim_resp.json()["event_id"]
+
+        replay_resp = await client.get(f"/attacks/replay/{event_id}")
+        assert replay_resp.status_code == 200
+        replay_body = replay_resp.json()
+
+        assert replay_body["event_id"] == event_id
+        assert replay_body["agent_id"] == "researcher-01"
+        assert replay_body["event_type"] == "enforcement"
+        assert replay_body["action"] == "shell.exec"
+        assert replay_body["decision"] == "BLOCK"
+        assert replay_body["allowed"] is False
+        assert replay_body["reason"] is not None
+        assert replay_body["risk_level"] in ("high", "critical")
+        assert replay_body["enforcement_outcome"] == "Blocked by Policy Enforcement Point"
+        assert replay_body["ledger"]["event_hash"] is not None
+        assert replay_body["ledger"]["chain_valid"] is True
+
+
+@pytest.mark.asyncio
+async def test_replay_event_with_linked_alert():
+    """2. Replaying an event with a linked alert returns the alert record."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        sim_resp = await client.post("/attacks/simulate", json={
+            "agent_id": "researcher-01",
+            "scenario": "secret_exfiltration"
+        })
+        assert sim_resp.status_code == 200
+        sim_data = sim_resp.json()
+        event_id = sim_data["event_id"]
+        expected_alert_id = sim_data["alert"]["id"]
+
+        replay_resp = await client.get(f"/attacks/replay/{event_id}")
+        assert replay_resp.status_code == 200
+        replay_body = replay_resp.json()
+
+        assert replay_body["alert"] is not None
+        assert replay_body["alert"]["id"] == expected_alert_id
+        assert replay_body["alert"]["event_id"] == event_id
+        assert replay_body["alert"]["alert_type"] == "SECRET_EXFILTRATION_PREVENTED"
+        assert replay_body["alert"]["severity"] in ("high", "critical")
+        assert "exfiltration" in replay_body["alert"]["message"].lower()
+
+
+@pytest.mark.asyncio
+async def test_replay_event_without_alert():
+    """3. Replaying an event without an alert returns alert: null."""
+    from backend.app.db.repository import get_repository
+    repo = get_repository()
+
+    event = await repo.store_event(EventCreate(
+        agent_id="planner-01",
+        event_type="plan_declared",
+        action="plan.declare",
+        payload={"goal": "organize research roadmap"},
+        decision={"status": "ALLOW", "allowed": True, "reason": "CONTRACT_PERMITTED", "risk_level": "low"},
+    ))
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        replay_resp = await client.get(f"/attacks/replay/{event.id}")
+        assert replay_resp.status_code == 200
+        replay_body = replay_resp.json()
+
+        assert replay_body["event_id"] == event.id
+        assert replay_body["agent_id"] == "planner-01"
+        assert replay_body["action"] == "plan.declare"
+        assert replay_body["decision"] == "ALLOW"
+        assert replay_body["allowed"] is True
+        assert replay_body["alert"] is None
+        assert replay_body["ledger"]["seq"] == event.seq
+        assert replay_body["ledger"]["event_hash"] == event.event_hash
+
+
+@pytest.mark.asyncio
+async def test_replay_unknown_event_id_returns_404():
+    """4. Unknown event_id returns 404."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/attacks/replay/unknown-uuid-00000000")
+        assert resp.status_code == 404
+        assert "not found" in resp.json()["detail"].lower()
+
+
+@pytest.mark.asyncio
+async def test_replay_contains_actual_persisted_identifiers():
+    """5. Response contains the actual persisted event/alert identifiers."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        sim_resp = await client.post("/attacks/simulate", json={
+            "agent_id": "planner-01",
+            "scenario": "rogue_agent"
+        })
+        assert sim_resp.status_code == 200
+        sim_data = sim_resp.json()
+        event_id = sim_data["event_id"]
+        alert_id = sim_data["alert"]["id"]
+
+        from backend.app.db.repository import get_repository
+        repo = get_repository()
+        persisted_event = await repo.get_event(event_id)
+        assert persisted_event is not None
+
+        replay_resp = await client.get(f"/attacks/replay/{event_id}")
+        assert replay_resp.status_code == 200
+        replay_body = replay_resp.json()
+
+        assert replay_body["event_id"] == persisted_event.id
+        assert replay_body["alert"]["id"] == alert_id
+        assert replay_body["alert"]["event_id"] == persisted_event.id
+        assert replay_body["ledger"]["event_hash"] == persisted_event.event_hash
+        assert replay_body["ledger"]["previous_hash"] == persisted_event.previous_hash
+        assert replay_body["ledger"]["content_hash"] == persisted_event.content_hash
+        assert replay_body["ledger"]["seq"] == persisted_event.seq

@@ -121,4 +121,30 @@ export interface AttackResult extends AttackSimulateResponse {
   error?: string | null;
 }
 
+export interface AttackReplayLedgerInfo {
+  seq: number;
+  previous_hash: string;
+  content_hash: string;
+  event_hash: string;
+  chain_valid?: boolean | null;
+}
+
+export interface AttackReplayResponse {
+  event_id: string;
+  agent_id: string;
+  event_type: string;
+  action: string;
+  decision?: string | null;
+  allowed?: boolean | null;
+  reason?: string | null;
+  risk_level?: AlertSeverity | string | null;
+  enforcement_outcome?: string | null;
+  resulting_agent_status?: string | null;
+  timestamp: string;
+  payload: Record<string, any>;
+  details: Record<string, any>;
+  alert?: Alert | null;
+  ledger: AttackReplayLedgerInfo;
+}
+
 

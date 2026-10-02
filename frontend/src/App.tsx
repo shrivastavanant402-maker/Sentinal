@@ -12,30 +12,34 @@ import { ErrorMessage } from './components/common/ErrorMessage';
 import { Dashboard } from './pages/Dashboard';
 import { Alerts } from './pages/Alerts';
 import { AttackLab } from './pages/AttackLab';
-function getTabFromLocation(): 'dashboard' | 'alerts' | 'attack_lab' {
+import { AttackReplay } from './pages/AttackReplay';
+
+function getTabFromLocation(): 'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay' {
   const path = window.location.pathname.toLowerCase();
   const hash = window.location.hash.toLowerCase();
+  if (path.includes('replay') || hash.includes('replay')) return 'attack_replay';
   if (path.includes('attack') || hash.includes('attack')) return 'attack_lab';
   if (path.includes('alert') || hash.includes('alert')) return 'alerts';
   return 'dashboard';
 }
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts' | 'attack_lab'>(getTabFromLocation);
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay'>(getTabFromLocation);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [ledgerReport, setLedgerReport] = useState<LedgerReport | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  const [replayEventId, setReplayEventId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const handleTabChange = useCallback((tab: 'dashboard' | 'alerts' | 'attack_lab') => {
+  const handleTabChange = useCallback((tab: 'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay') => {
     setCurrentTab(tab);
-    const targetPath = tab === 'dashboard' ? '/' : tab === 'attack_lab' ? '/attacks' : '/alerts';
+    const targetPath = tab === 'dashboard' ? '/' : tab === 'attack_lab' ? '/attacks' : tab === 'attack_replay' ? '/replay' : '/alerts';
     if (window.location.pathname !== targetPath) {
       window.history.pushState(null, '', targetPath);
     }
@@ -167,16 +171,24 @@ export default function App() {
             onRefresh={loadData}
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
-            onInspectEvent={(_eventId) => {
-              handleTabChange('dashboard');
-              // Switch to dashboard where the event stream is visible
+            onInspectEvent={(eventId) => {
+              setReplayEventId(eventId);
+              handleTabChange('attack_replay');
             }}
           />
-        ) : (
+        ) : currentTab === 'attack_lab' ? (
           <AttackLab
             agents={agents}
             isLoading={isLoading}
             onRefresh={loadData}
+          />
+        ) : (
+          <AttackReplay
+            events={events}
+            agents={agents}
+            isLoading={isLoading}
+            onRefresh={loadData}
+            initialEventId={replayEventId}
           />
         )}
       </main>
