@@ -59,6 +59,7 @@ class ExecutorAgent(BaseAgent):
         title: str,
         template: str = "executive_briefing",
         session_id: Optional[str] = "session-001",
+        mission_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Executes report.generate protected by PEP guard.
@@ -69,6 +70,7 @@ class ExecutorAgent(BaseAgent):
             action="report.generate",
             payload=payload,
             session_id=session_id,
+            mission_id=mission_id,
         )
         return self._exec_generate_report(title=title, template=template)
 
@@ -77,6 +79,7 @@ class ExecutorAgent(BaseAgent):
         path: str,
         content: str,
         session_id: Optional[str] = "session-001",
+        mission_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Attempts fs.write protected by PEP guard.
@@ -87,6 +90,7 @@ class ExecutorAgent(BaseAgent):
             action="fs.write",
             payload=payload,
             session_id=session_id,
+            mission_id=mission_id,
         )
         return self._exec_fs_write(path=path, content=content)
 

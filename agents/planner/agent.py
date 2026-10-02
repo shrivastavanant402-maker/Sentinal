@@ -46,6 +46,7 @@ class PlannerAgent(BaseAgent):
         target_agent: str,
         task: str,
         session_id: Optional[str] = "session-001",
+        mission_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Executes task.delegate protected by PEP guard.
@@ -56,6 +57,7 @@ class PlannerAgent(BaseAgent):
             action="task.delegate",
             payload=payload,
             session_id=session_id,
+            mission_id=mission_id,
         )
         return self._exec_delegate_task(target_agent=target_agent, task=task)
 

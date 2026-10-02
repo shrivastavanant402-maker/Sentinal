@@ -61,6 +61,7 @@ class ResearcherAgent(BaseAgent):
         query: str,
         max_results: int = 5,
         session_id: Optional[str] = "session-001",
+        mission_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Executes web.search protected by PEP guard.
@@ -72,6 +73,7 @@ class ResearcherAgent(BaseAgent):
             action="web.search",
             payload=payload,
             session_id=session_id,
+            mission_id=mission_id,
         )
         return self._exec_web_search(query=query, max_results=max_results)
 
@@ -79,6 +81,7 @@ class ResearcherAgent(BaseAgent):
         self,
         table: str,
         session_id: Optional[str] = "session-001",
+        mission_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Attempts database.export protected by PEP guard.
@@ -89,6 +92,7 @@ class ResearcherAgent(BaseAgent):
             action="database.export",
             payload=payload,
             session_id=session_id,
+            mission_id=mission_id,
         )
         return self._exec_database_export(table=table)
 

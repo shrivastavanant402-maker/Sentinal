@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import asyncio
+import inspect
 import logging
 from typing import Any, Callable, Dict, List, Optional
 import httpx
@@ -44,6 +45,7 @@ class BaseAgent(ABC):
         self.metadata = metadata or {}
         self.status = "active"
         self.client = client or AegisMeshClient()
+        self.last_decision: Optional[DecisionResponse] = None
 
     async def register(self) -> Dict[str, Any]:
         """
@@ -129,6 +131,7 @@ class BaseAgent(ABC):
         # Parse into typed DecisionResponse model
         try:
             decision = DecisionResponse(**raw_response)
+            self.last_decision = decision
         except Exception as exc:
             logger.error("PEP returned malformed decision response: %s", exc)
             raise ActionDenied(
@@ -208,7 +211,7 @@ class BaseAgent(ABC):
                 details=decision.details,
             )
 
-        if asyncio.iscoroutinefunction(executor):
+        if inspect.iscoroutinefunction(executor):
             return await executor(*args, **kwargs)
         return executor(*args, **kwargs)
 
