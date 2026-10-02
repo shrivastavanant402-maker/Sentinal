@@ -61,6 +61,21 @@
 - [Developer 2] Completed Checkpoint 8: SOC Incident Investigation Flow. Connected the security feature pipeline into a seamless analyst investigation workflow (Alert → Incident Details → Supporting Events → Attack Replay → Ledger Evidence). Rebuilt AlertDetailModal into a high-density SOC incident investigation view with incident header, detection explanation, primary event inspection, cryptographic ledger proof display with chain verification, and interactive supporting events list. Enabled bidirectional navigation between Alerts and Attack Replay. Verified all 4 cases (Prompt Injection, Secret Exfiltration, Rogue Agent, Runtime Anomaly) and global ledger chain integrity with 0 regressions (2026-10-02)
 - [Developer 2] Completed IDE Integration Checkpoint A: Created VS Code extension foundation in vscode-extension/ with TypeScript, modular architecture (config, client, ui, commands), settings (aegismesh.backendUrl, aegismesh.agentId), status-bar controller (checking/connected/disconnected), commands ('AegisMesh: Show Status', 'AegisMesh: Check Connection'), and resilient HealthClient calling GET /health. Added unit test suite (7 tests passing). Full regression verified: 178/178 backend tests passing, frontend typecheck and production build passing (2026-10-02)
 - [Developer 2] Completed IDE Integration Checkpoint B: Connected VS Code extension to AegisMesh POST /enforce PEP endpoint with typed EnforcementClient (ActionRequest/DecisionResponse contract), error handling, and testAction command ('AegisMesh: Test Action') with full decision notifications and inspection breakdown. Added 9 new unit and integration tests (16 tests total, 100% passing) including live ALLOW/BLOCK verification against running backend. Full regression verified: 178/178 backend tests passing, frontend typecheck and production build passing (2026-10-02)
+- [Developer 2] Completed Checkpoint C: Multi-Agent Mission Coordinator. Implemented MissionCoordinator in backend/app/agents/coordinator.py chaining Planner, Researcher, and Executor through existing PEP guardrails. Added test_multi_agent_mission.py with 6 comprehensive tests (184/184 tests passing) (2026-10-02)
+- [Developer 2] Completed MCP Checkpoint 1: AegisMesh Model Context Protocol (MCP) Integration Foundation (2026-10-02)
+  - Integrated official Python MCP SDK dependency (`mcp==2.2.0`) in backend requirements.
+  - Implemented stdio-based MCP server in `backend/app/mcp/server.py` with executable entrypoint `scripts/mcp_server.py`.
+  - Exposed exactly ONE MCP tool: `aegismesh_enforce` (agent_id, action, payload, mission_id, session_id, provenance).
+  - Preserved existing security architecture: tool translates inputs into `ActionRequest` and delegates directly to the existing AegisMesh PEP enforcement path (`POST /enforce` / `execute_enforcement()`), evaluating Identity -> Mission Contract -> Policy Engine -> Trust -> Enforcement -> Cryptographic Ledger. Zero policy duplication or security bypass.
+  - Stdio transport safety: diagnostic logs directed exclusively to `sys.stderr` to keep `stdout` pristine for JSON-RPC MCP framing.
+  - Added Frontend IDE / MCP page (`frontend/src/pages/IDEIntegration.tsx`) with copyable MCP client configuration snippets for Claude Desktop, Cursor, and VS Code, navigation item `IDE / MCP`, and architecture summary.
+  - Verified with 6 dedicated tests in `backend/tests/test_mcp_enforcement.py` covering tool discovery, ALLOW decision (`researcher-01` + `web.search`), BLOCK decision (`researcher-01` + `shell.exec`), unknown agent `INVALID_IDENTITY`, cryptographic ledger chain insertion & verification, and quarantine no-bypass.
+  - Full test regression: 190/190 backend tests passing, 16/16 VS Code extension tests passing, frontend typecheck (`tsc --noEmit`) and production build (`vite build`) passing with 0 errors.
+  - Validated live local MCP invocation against active daemon on port 8000 confirming real PEP decision and cryptographic ledger verification.
+  - Limitations:
+    * Only one MCP tool exists (`aegismesh_enforce`).
+    * No arbitrary IDE terminal/file interception yet.
+    * IDE package/extension integration is deferred to a later checkpoint.
 
 ## In Progress
 

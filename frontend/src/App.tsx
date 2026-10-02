@@ -30,6 +30,7 @@ import {
   simulateAttack as apiSimulateAttack,
   updateAgentStatus as apiUpdateAgentStatus,
 } from "./services/api";
+import { IDEIntegration } from "./pages/IDEIntegration";
 
 type IconName =
   | "activity"
@@ -290,6 +291,7 @@ const navItems: { id: View; label: string; icon: IconName; count?: number }[] = 
   { id: "replay", label: "Replay", icon: "replay" },
   { id: "ledger", label: "Audit ledger", icon: "ledger" },
   { id: "attack_lab", label: "Attack Lab", icon: "zap" },
+  { id: "ide", label: "IDE / MCP", icon: "shield" },
 ];
 
 function AppShell({
@@ -1791,6 +1793,7 @@ export default function App() {
     else if (path.includes("ledger")) setView("ledger");
     else if (path.includes("agent")) setView("agents");
     else if (path.includes("attack")) setView("attack_lab");
+    else if (path.includes("ide") || path.includes("mcp")) setView("ide");
   }, []);
 
   const handleSetView = useCallback((nextView: View) => {
@@ -1800,6 +1803,8 @@ export default function App() {
         ? "/"
         : nextView === "attack_lab"
         ? "/attacks"
+        : nextView === "ide"
+        ? "/ide"
         : `/${nextView}`;
     if (window.location.pathname !== target) {
       window.history.pushState(null, "", target);
@@ -1965,6 +1970,9 @@ export default function App() {
           onSimulate={apiSimulateAttack}
           go={handleSetView}
         />
+      )}
+      {view === "ide" && (
+        <IDEIntegration go={handleSetView} />
       )}
 
       {dialog && selectedAgentForRelease && (
