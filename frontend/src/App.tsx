@@ -12,9 +12,16 @@ import { ErrorMessage } from './components/common/ErrorMessage';
 import { Dashboard } from './pages/Dashboard';
 import { Alerts } from './pages/Alerts';
 import { AttackLab } from './pages/AttackLab';
+function getTabFromLocation(): 'dashboard' | 'alerts' | 'attack_lab' {
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  if (path.includes('attack') || hash.includes('attack')) return 'attack_lab';
+  if (path.includes('alert') || hash.includes('alert')) return 'alerts';
+  return 'dashboard';
+}
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts' | 'attack_lab'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts' | 'attack_lab'>(getTabFromLocation);
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
@@ -25,6 +32,22 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+
+  const handleTabChange = useCallback((tab: 'dashboard' | 'alerts' | 'attack_lab') => {
+    setCurrentTab(tab);
+    const targetPath = tab === 'dashboard' ? '/' : tab === 'attack_lab' ? '/attacks' : '/alerts';
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  }, []);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentTab(getTabFromLocation());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Core data loader
   const loadData = useCallback(async () => {
@@ -99,7 +122,7 @@ export default function App() {
       {/* SOC Navigation & System Health Header */}
       <Header
         currentTab={currentTab}
-        onTabChange={setCurrentTab}
+        onTabChange={handleTabChange}
         health={health}
         activeAgentCount={metrics.activeAgents}
         totalAgentCount={metrics.totalAgents}
@@ -130,10 +153,10 @@ export default function App() {
             isLoading={isLoading}
             onRefresh={loadData}
             onVerifyLedger={handleVerifyLedger}
-            onNavigateToAlerts={() => setCurrentTab('alerts')}
+            onNavigateToAlerts={() => handleTabChange('alerts')}
             onSelectAlert={(alert) => {
               setSelectedAlert(alert);
-              setCurrentTab('alerts');
+              handleTabChange('alerts');
             }}
           />
         ) : currentTab === 'alerts' ? (
@@ -145,7 +168,7 @@ export default function App() {
             selectedAlert={selectedAlert}
             onSelectAlert={handleSelectAlert}
             onInspectEvent={(_eventId) => {
-              setCurrentTab('dashboard');
+              handleTabChange('dashboard');
               // Switch to dashboard where the event stream is visible
             }}
           />
