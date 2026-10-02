@@ -1,12 +1,23 @@
 import logging
-import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
-from backend.app.schemas.agent import AgentStatus
+from backend.app.contracts.validator import (
+    ContractOutcome,
+    ContractValidationResult,
+    MissionContractValidator,
+)
+from backend.app.db.repositories.contracts import (
+    BaseContractRepository,
+    get_contract_repository,
+)
+from backend.app.policy.evaluator import PolicyEvaluationResult, RuntimePolicyEvaluator
+from backend.app.policy.risk import classify_action_risk
+from backend.app.schemas.agent import AgentResponse, AgentStatus
+from backend.app.schemas.contract import MissionContract
 from backend.app.schemas.decision import (
     ActionRequest,
-    DecisionResponse,
     DecisionReason,
+    DecisionResponse,
     DecisionStatus,
     RiskLevel,
 )
@@ -14,84 +25,57 @@ from backend.app.schemas.decision import (
 logger = logging.getLogger("aegismesh.pdp")
 
 
-# ---------------------------------------------------------------------------
-# Risk classification — deterministic, no fake policy engine
-# ---------------------------------------------------------------------------
-
-# Actions that are considered high-risk regardless of agent/contract status.
-# Kept minimal and explicit.
-HIGH_RISK_ACTIONS: frozenset = frozenset({
-    "database.export",
-    "shell.exec",
-    "external.post",
-    "fs.write",
-    "secret.read",
-})
-
-
-def _classify_risk(action: str) -> RiskLevel:
-    """Deterministic risk classification based on tool name."""
-    if action in HIGH_RISK_ACTIONS:
-        return RiskLevel.HIGH
-    if action.startswith("database.") or action.startswith("secret."):
-        return RiskLevel.HIGH
-    if action.startswith("external.") or action.startswith("shell."):
-        return RiskLevel.HIGH
-    if action.startswith("fs."):
-        return RiskLevel.MEDIUM
-    return RiskLevel.LOW
-
-
-# ---------------------------------------------------------------------------
-# PDP Engine
-# ---------------------------------------------------------------------------
-
-
 class PolicyDecisionPoint:
     """
-    Minimal, deterministic Policy Decision Point.
+    Policy Decision Point (PEP/PDP) Engine.
 
-    Evaluation pipeline (each stage can short-circuit):
-      1. Identity presence  — agent must be registered
-      2. Quarantine status  — quarantined agent → QUARANTINE
-      3. Risk classification — high-risk action → BLOCK (until contract permits it)
-      4. Default: ALLOW for known, active, low/medium risk actions
+    Synchronous evaluation pipeline:
+      1. Identity Verification  — agent must be registered in the system
+      2. Administrative Status  — quarantined / halted / paused checks
+      3. Mission Contract       — looks up active contract for (agent_id, mission_id)
+      4. Contract Validation    — validates allowed_tools / forbidden_tools allowlists
+      5. Policy Evaluation      — synthesizes deterministic risk, status, and outcome
+      6. Decision Dispatch      — constructs tamper-verifiable DecisionResponse
 
-    Evaluators (identity, contract, policy, trust, provenance) are injected via
-    the ``evaluators`` dict so future implementations drop in without touching
-    this class. For now all are None / not invoked.
+    Enforces strict default-deny and fail-closed security.
     """
 
     def __init__(
         self,
+        contract_repository: Optional[BaseContractRepository] = None,
+        contract_validator: Optional[MissionContractValidator] = None,
+        policy_evaluator: Optional[RuntimePolicyEvaluator] = None,
         identity_verifier=None,
-        contract_evaluator=None,
-        policy_evaluator=None,
         trust_evaluator=None,
         provenance_evaluator=None,
     ):
+        self._contract_repo = contract_repository
+        self._contract_validator = contract_validator or MissionContractValidator()
+        self._policy_evaluator = policy_evaluator or RuntimePolicyEvaluator(
+            contract_validator=self._contract_validator
+        )
         self._identity_verifier = identity_verifier
-        self._contract_evaluator = contract_evaluator
-        self._policy_evaluator = policy_evaluator
         self._trust_evaluator = trust_evaluator
         self._provenance_evaluator = provenance_evaluator
+
+    def _get_contract_repo(self) -> BaseContractRepository:
+        if self._contract_repo is not None:
+            return self._contract_repo
+        return get_contract_repository()
 
     async def evaluate(
         self,
         request: ActionRequest,
-        agent: Optional[Any] = None,  # AgentResponse or None
+        agent: Optional[AgentResponse] = None,
     ) -> DecisionResponse:
         """
-        Evaluate an action request and return a DecisionResponse.
-        ``agent`` is the database record for ``request.agent_id``.
-        Pass None when the agent is not registered.
+        Evaluates an action request and returns a strongly-typed DecisionResponse.
+        Never executes the action. Fails closed on any unexpected state.
         """
-        risk = _classify_risk(request.action)
-
-        # ── STAGE 1: Identity / registration check ──────────────────────────
+        # 1. Identity & Quarantine fast-path / initial policy evaluation
         if agent is None:
             logger.warning(
-                "PEP BLOCK — unregistered agent '%s' requested '%s'",
+                "PEP BLOCK — Unregistered agent '%s' requested action '%s'",
                 request.agent_id,
                 request.action,
             )
@@ -103,14 +87,13 @@ class PolicyDecisionPoint:
                 agent_id=request.agent_id,
                 action=request.action,
                 details={
-                    "message": "Agent is not registered. Registration required before action can be authorised.",
+                    "message": "Agent is not registered. Anonymous actions are strictly prohibited.",
                 },
             )
 
-        # ── STAGE 2: Quarantine check ────────────────────────────────────────
         if agent.status == AgentStatus.QUARANTINED:
             logger.warning(
-                "PEP QUARANTINE — agent '%s' is quarantined, blocked '%s'",
+                "PEP QUARANTINE — Agent '%s' is quarantined, denying action '%s'",
                 request.agent_id,
                 request.action,
             )
@@ -127,10 +110,9 @@ class PolicyDecisionPoint:
                 },
             )
 
-        # ── STAGE 3: Halted / paused check ──────────────────────────────────
         if agent.status in (AgentStatus.HALTED, AgentStatus.PAUSED):
             logger.warning(
-                "PEP BLOCK — agent '%s' is %s, blocked '%s'",
+                "PEP BLOCK — Agent '%s' is %s, denying action '%s'",
                 request.agent_id,
                 agent.status.value,
                 request.action,
@@ -148,80 +130,46 @@ class PolicyDecisionPoint:
                 },
             )
 
-        # ── STAGE 4: High-risk action gate ──────────────────────────────────
-        # Until mission contracts and policy engine are implemented, high-risk
-        # actions are blocked unconditionally (safe default).
-        if risk == RiskLevel.HIGH:
-            logger.warning(
-                "PEP BLOCK — high-risk action '%s' by agent '%s' (no contract approved)",
-                request.action,
-                request.agent_id,
-            )
-            return DecisionResponse(
-                decision=DecisionStatus.BLOCK,
-                allowed=False,
-                reason=DecisionReason.HIGH_RISK_ACTION,
-                risk_level=risk,
-                agent_id=request.agent_id,
-                action=request.action,
-                details={
-                    "message": (
-                        "High-risk action requires an approved mission contract. "
-                        "Contract evaluation not yet configured."
-                    ),
-                    "action": request.action,
-                },
-            )
+        # 2. Retrieve active Mission Contract for agent
+        repo = self._get_contract_repo()
+        contract: Optional[MissionContract] = await repo.get_contract_for_agent(
+            agent_id=request.agent_id,
+            mission_id=request.mission_id,
+        )
 
-        # ── STAGE 5: Future evaluators (no-op until implemented) ────────────
-        # When injected evaluators are non-None they will be called here.
-        # They return a partial result dict; any 'allowed=False' short-circuits.
-        for evaluator_name, evaluator in [
-            ("policy", self._policy_evaluator),
-            ("trust", self._trust_evaluator),
-            ("provenance", self._provenance_evaluator),
-            ("contract", self._contract_evaluator),
-        ]:
-            if evaluator is not None:
-                result = await evaluator.evaluate_policy(request)  # type: ignore[union-attr]
-                if not result.get("allowed", True):
-                    logger.warning(
-                        "PEP BLOCK — %s evaluator blocked '%s' by agent '%s': %s",
-                        evaluator_name,
-                        request.action,
-                        request.agent_id,
-                        result.get("reason"),
-                    )
-                    return DecisionResponse(
-                        decision=DecisionStatus.BLOCK,
-                        allowed=False,
-                        reason=result.get("reason", DecisionReason.POLICY_VIOLATION),
-                        risk_level=risk,
-                        agent_id=request.agent_id,
-                        action=request.action,
-                        details=result,
-                    )
+        # 3. Validate against Mission Contract
+        contract_result = self._contract_validator.validate(request, contract)
 
-        # ── DEFAULT: ALLOW ───────────────────────────────────────────────────
+        # 4. Policy Engine Evaluation
+        policy_result: PolicyEvaluationResult = self._policy_evaluator.evaluate(
+            request=request,
+            agent=agent,
+            contract=contract,
+            contract_result=contract_result,
+        )
+
         logger.info(
-            "PEP ALLOW — agent '%s' action '%s' (risk: %s)",
+            "PEP Evaluation complete: agent=%s action=%s status=%s allowed=%s reason=%s",
             request.agent_id,
             request.action,
-            risk.value,
+            policy_result.status.value,
+            policy_result.allowed,
+            policy_result.reason,
         )
+
         return DecisionResponse(
-            decision=DecisionStatus.ALLOW,
-            allowed=True,
-            reason=DecisionReason.ALLOWED_BY_POLICY,
-            risk_level=risk,
+            decision=policy_result.status,
+            allowed=policy_result.allowed,
+            reason=policy_result.reason,
+            risk_level=policy_result.risk_level,
             agent_id=request.agent_id,
             action=request.action,
-            details={"message": "Action permitted by current policy configuration."},
+            details=policy_result.details,
         )
 
 
 # ---------------------------------------------------------------------------
-# Singleton accessor (parallel to get_repository())
+# Singleton accessor
 # ---------------------------------------------------------------------------
 
 _pdp_instance: Optional[PolicyDecisionPoint] = None

@@ -30,13 +30,20 @@
 - [Developer 1] Integrated protected tool execution in ResearcherAgent (web.search ALLOW, database.export BLOCK), ExecutorAgent (report.generate ALLOW, fs.write BLOCK), and PlannerAgent (task.delegate ALLOW) (2026-10-02)
 - [Developer 1] Added test_agent_guard.py with 12 tests covering Cases A-F, fail-closed behavior, and real agent integration (2026-10-02)
 - [Developer 1] Added verify_agent_guard.py manual end-to-end verification script (2026-10-02)
-- All 41 backend tests passing with 100% pass rate (2026-10-02)
+- [Developer 1] Completed Phase 1 Step 4: Implemented Mission Contracts schema (MissionContract, ContractCreate, ContractUpdate) and Supabase migration 002_security_contracts.sql (2026-10-02)
+- [Developer 1] Implemented BaseContractRepository, InMemoryContractRepository, and SupabaseContractRepository with default seed contracts (2026-10-02)
+- [Developer 1] Built centralized tool risk classification in backend/app/policy/risk.py (LOW, MEDIUM, HIGH) (2026-10-02)
+- [Developer 1] Built MissionContractValidator in backend/app/contracts/validator.py (ALLOW, DENY, NO_CONTRACT) (2026-10-02)
+- [Developer 1] Built RuntimePolicyEvaluator in backend/app/policy/evaluator.py enforcing default-deny, allowlists/denylists, and fail-closed security (2026-10-02)
+- [Developer 1] Integrated MissionContractValidator and RuntimePolicyEvaluator into PolicyDecisionPoint engine (2026-10-02)
+- [Developer 1] Created REST API endpoints in backend/app/api/contracts.py: GET /contracts/{agent_id}, PUT /contracts/{agent_id}, GET /contracts (2026-10-02)
+- [Developer 1] Created test_contracts_and_policy.py with 20 comprehensive unit and integration tests (2026-10-02)
+- All 61 backend tests passing with 100% pass rate (2026-10-02)
 
 ## In Progress
 
 ## Next
-- [Developer 1] Implement Agent Identity and Mission Contracts enforcement (Phase 1 Step 4)
-- Phase 2: Feature modules (mission contracts, OPA policy engine, anomaly detection, trust scoring, quarantine) (2026-10-02)
+- Phase 2: Feature modules (trust scoring engine, data provenance/taint tracking, mission drift detection, quarantine controller) (2026-10-02)
 
 ## Known Bugs
 - None (2026-10-02)

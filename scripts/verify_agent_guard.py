@@ -1,11 +1,14 @@
 """
-AegisMesh Phase 1 Step 3 - Manual End-to-End PEP Guard Verification Script
+AegisMesh Phase 1 Step 4 - Manual End-to-End PEP & Mission Contract Verification Script
 
 Demonstrates:
 1. Researcher -> guard("web.search") -> POST /enforce -> ALLOW -> web.search executes
-2. Researcher -> guard("database.export") -> POST /enforce -> BLOCK -> database.export DOES NOT execute
+2. Researcher -> guard("database.export") -> POST /enforce -> BLOCK (Contract violation) -> DOES NOT execute
 3. Unknown Agent -> guard("web.search") -> POST /enforce -> BLOCK (InvalidAgentIdentity)
 4. Quarantined Agent -> guard("web.search") -> POST /enforce -> QUARANTINE (AgentQuarantined)
+5. Executor -> guard("report.generate") -> POST /enforce -> ALLOW -> report.generate executes
+6. Executor -> guard("shell.exec") -> POST /enforce -> BLOCK (Contract violation) -> shell.exec DOES NOT execute
+7. Cryptographic Ledger verification afterward
 """
 import asyncio
 import json
@@ -28,34 +31,34 @@ from backend.app.security.exceptions import (
 )
 from agents.common.client import AegisMeshClient
 from agents.researcher.agent import ResearcherAgent
+from agents.executor.agent import ExecutorAgent
 
 
 async def main():
-    print("=" * 65)
-    print(" AegisMesh PEP Agent Guard — End-to-End Verification")
-    print("=" * 65)
+    print("=" * 68)
+    print(" AegisMesh PEP & Mission Contracts — End-to-End Verification")
+    print("=" * 68)
 
     client = AegisMeshClient(app=app)
     repo = get_repository()
 
-    # Ensure researcher-01 is registered
-    existing = await repo.get_agent("researcher-01")
-    if not existing:
-        await client.register_agent(
-            agent_id="researcher-01",
-            name="Deep Researcher",
-            role="researcher",
-            capabilities=["web.search", "web.read"],
-        )
-    # Ensure active status
-    await repo.update_agent_status("researcher-01", AgentStatus.ACTIVE)
+    # Ensure researcher-01 and executor-01 are registered and active
+    for aid, name, role in [
+        ("researcher-01", "Deep Researcher", "researcher"),
+        ("executor-01", "Task Executor", "executor"),
+    ]:
+        existing = await repo.get_agent(aid)
+        if not existing:
+            await client.register_agent(agent_id=aid, name=name, role=role)
+        await repo.update_agent_status(aid, AgentStatus.ACTIVE)
 
     researcher = ResearcherAgent(agent_id="researcher-01", client=client)
+    executor = ExecutorAgent(agent_id="executor-01", client=client)
 
     # -----------------------------------------------------------------------
-    # Demonstration 1: Safe Action -> ALLOW -> Executes
+    # Demonstration 1: Researcher Safe Action -> ALLOW -> Executes
     # -----------------------------------------------------------------------
-    print("\n[1] Researcher: guard('web.search') [Safe Action]")
+    print("\n[1] Researcher: guard('web.search') [Permitted by Contract]")
     try:
         decision = await researcher.guard(
             action="web.search",
@@ -75,9 +78,9 @@ async def main():
         print(f"    [UNEXPECTED FAILURE]: {exc}")
 
     # -----------------------------------------------------------------------
-    # Demonstration 2: High-Risk Action -> BLOCK -> Does NOT execute
+    # Demonstration 2: Researcher Forbidden Action -> BLOCK -> Does NOT execute
     # -----------------------------------------------------------------------
-    print("\n[2] Researcher: guard('database.export') [High-Risk Action]")
+    print("\n[2] Researcher: guard('database.export') [Forbidden by Contract]")
     try:
         await researcher.execute_database_export(table="secret_credentials")
         print("    [SECURITY FAILURE] database.export executed when it should be blocked!")
@@ -108,7 +111,6 @@ async def main():
     # Demonstration 4: Quarantined Agent -> QUARANTINE (AgentQuarantined)
     # -----------------------------------------------------------------------
     print("\n[4] Quarantined Agent: guard('web.search') [Compromised Agent]")
-    # Register and quarantine agent
     compromised_id = "quarantined-researcher-99"
     c_existing = await repo.get_agent(compromised_id)
     if not c_existing:
@@ -116,7 +118,6 @@ async def main():
             agent_id=compromised_id,
             name="Compromised Researcher",
             role="researcher",
-            capabilities=["web.search"],
         )
     await repo.update_agent_status(compromised_id, AgentStatus.QUARANTINED)
 
@@ -129,9 +130,48 @@ async def main():
         print(f"    Exception Message: {exc}")
         print("    [VERIFIED] Quarantined agent was rejected, tool DID NOT EXECUTE.")
 
-    print("\n" + "=" * 65)
-    print(" ALL END-TO-END DEMONSTRATIONS COMPLETED SUCCESSFULLY.")
-    print("=" * 65)
+    # -----------------------------------------------------------------------
+    # Demonstration 5: Executor Permitted Action -> ALLOW -> Executes
+    # -----------------------------------------------------------------------
+    print("\n[5] Executor: guard('report.generate') [Permitted by Contract]")
+    try:
+        rep = await executor.execute_generate_report(title="Q3 Security Audit Report")
+        print(f"    [EXECUTION SUCCESS] report.generate executed: {rep['title']}")
+        print(f"    Status: {rep['status']}")
+    except Exception as exc:
+        print(f"    [UNEXPECTED FAILURE]: {exc}")
+
+    # -----------------------------------------------------------------------
+    # Demonstration 6: Executor Forbidden Action -> BLOCK -> Does NOT execute
+    # -----------------------------------------------------------------------
+    print("\n[6] Executor: guard('shell.exec') [Forbidden by Contract]")
+    try:
+        await executor.execute_protected(
+            action="shell.exec",
+            payload={"cmd": "cat /etc/shadow"},
+            executor=lambda: "Executed shell!",
+        )
+        print("    [SECURITY FAILURE] shell.exec executed when it should be blocked!")
+    except ActionDenied as exc:
+        print("    [BLOCKED BY PEP] ActionDenied caught as expected!")
+        print(f"    Exception Message: {exc}")
+        print("    [VERIFIED] shell.exec tool DID NOT EXECUTE.")
+
+    # -----------------------------------------------------------------------
+    # Demonstration 7: Verify Cryptographic Ledger Integrity
+    # -----------------------------------------------------------------------
+    print("\n[7] Verifying Ledger Chain Integrity (/ledger/verify):")
+    v_report = await client.verify_ledger()
+    print(f"    Chain Valid: {v_report['chain_valid']}")
+    print(f"    Events Checked: {v_report['checked']}")
+    print(f"    Errors: {v_report['errors']}")
+
+    print("\n" + "=" * 68)
+    if v_report["chain_valid"]:
+        print(" ALL END-TO-END DEMONSTRATIONS AND LEDGER CHECKS PASSED.")
+    else:
+        print(" VERIFICATION ENCOUNTERED LEDGER MISMATCH.")
+    print("=" * 68)
 
 
 if __name__ == "__main__":

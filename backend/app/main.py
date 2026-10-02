@@ -10,8 +10,11 @@ from backend.app.api.events import router as events_router
 from backend.app.api.ledger import router as ledger_router
 from backend.app.api.alerts import router as alerts_router
 from backend.app.api.enforcement import router as enforcement_router
+from backend.app.api.contracts import router as contracts_router
 from backend.app.db.repository import get_repository
+from backend.app.db.repositories.contracts import get_contract_repository, get_default_seed_contracts
 from backend.app.schemas.agent import AgentCreate
+from backend.app.schemas.contract import ContractCreate
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,6 +64,30 @@ async def lifespan(app: FastAPI):
             await repo.register_agent(agent_data)
             logger.info(f"Registered foundation agent: {agent_data.id} ({agent_data.role})")
 
+    # Seed default mission contracts for foundation agents if not existing
+    contract_repo = get_contract_repository()
+    for seed_c in get_default_seed_contracts():
+        existing_contract = await contract_repo.get_contract_for_agent(seed_c.agent_id)
+        if not existing_contract:
+            try:
+                await contract_repo.create_contract(
+                    ContractCreate(
+                        id=seed_c.id,
+                        mission_id=seed_c.mission_id,
+                        agent_id=seed_c.agent_id,
+                        name=seed_c.name,
+                        description=seed_c.description,
+                        allowed_tools=seed_c.allowed_tools,
+                        forbidden_tools=seed_c.forbidden_tools,
+                        allowed_resources=seed_c.allowed_resources,
+                        risk_level=seed_c.risk_level,
+                        enabled=seed_c.enabled,
+                    )
+                )
+                logger.info(f"Seeded default mission contract for agent: {seed_c.agent_id}")
+            except Exception as exc:
+                logger.warning(f"Could not seed contract for {seed_c.agent_id}: {exc}")
+
     logger.info("AegisMesh Runtime Integrity Core is ready.")
     yield
     logger.info("Shutting down AegisMesh Core.")
@@ -92,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(ledger_router)
     app.include_router(alerts_router)
     app.include_router(enforcement_router)
+    app.include_router(contracts_router)
 
     # Also mount under /api/v1 for standard API versioning
     app.include_router(health_router, prefix="/api/v1")
@@ -100,6 +128,7 @@ def create_app() -> FastAPI:
     app.include_router(ledger_router, prefix="/api/v1")
     app.include_router(alerts_router, prefix="/api/v1")
     app.include_router(enforcement_router, prefix="/api/v1")
+    app.include_router(contracts_router, prefix="/api/v1")
 
     return app
 
