@@ -25,13 +25,16 @@
 - [Developer 1] Created POST /enforce endpoint in backend/app/api/enforcement.py — security gate with ledger recording (2026-10-02)
 - [Developer 1] Added EventType.ENFORCEMENT to event schema; enforcement decisions written as tamper-proof ledger events (2026-10-02)
 - [Developer 1] Created backend/tests/test_pep.py with 11 PEP tests (unknown=BLOCK, quarantined=QUARANTINE, high-risk=BLOCK, safe=ALLOW, ledger verification, schema check, hash divergence) (2026-10-02)
-- All 29 backend tests passing (2026-10-02)
+- [Developer 1] Completed Phase 1 Step 3: Integrated PEP into agent execution path with BaseAgent.guard() and BaseAgent.execute_protected() (2026-10-02)
+- [Developer 1] Implemented AegisMeshClient.enforce() with fail-closed error handling and ASGI test transport support (2026-10-02)
+- [Developer 1] Integrated protected tool execution in ResearcherAgent (web.search ALLOW, database.export BLOCK), ExecutorAgent (report.generate ALLOW, fs.write BLOCK), and PlannerAgent (task.delegate ALLOW) (2026-10-02)
+- [Developer 1] Added test_agent_guard.py with 12 tests covering Cases A-F, fail-closed behavior, and real agent integration (2026-10-02)
+- [Developer 1] Added verify_agent_guard.py manual end-to-end verification script (2026-10-02)
+- All 41 backend tests passing with 100% pass rate (2026-10-02)
 
 ## In Progress
 
 ## Next
-- [Developer 1] Implement PEP endpoint (POST /enforce) with passthrough decision logic (Phase 1 Step 2)
-- [Developer 1] Add guard() method to BaseAgent and AegisMeshClient (Phase 1 Step 3)
 - [Developer 1] Implement Agent Identity and Mission Contracts enforcement (Phase 1 Step 4)
 - Phase 2: Feature modules (mission contracts, OPA policy engine, anomaly detection, trust scoring, quarantine) (2026-10-02)
 

@@ -62,9 +62,24 @@ def verify_ledger_chain(events: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         recorded_content_hash = ev.get("content_hash")
         if recorded_content_hash != expected_content_hash:
-            errors.append(
-                f"Content hash mismatch at seq={seq} (id={ev_id}): recorded {recorded_content_hash} != calculated {expected_content_hash}"
-            )
+            # Check backward compatibility for legacy Phase 0 events without decision field in canonical JSON
+            from backend.app.ledger.hasher import compute_sha256, to_canonical_json
+            legacy_dict = {
+                "id": ev_id,
+                "agent_id": agent_id,
+                "event_type": event_type,
+                "action": action,
+                "payload": payload,
+                "session_id": session_id or "",
+                "timestamp": timestamp.isoformat() if isinstance(timestamp, datetime) else str(timestamp),
+            }
+            legacy_content_hash = compute_sha256(to_canonical_json(legacy_dict))
+            if recorded_content_hash == legacy_content_hash:
+                expected_content_hash = legacy_content_hash
+            else:
+                errors.append(
+                    f"Content hash mismatch at seq={seq} (id={ev_id}): recorded {recorded_content_hash} != calculated {expected_content_hash}"
+                )
 
         # 2. Verify previous_hash
         recorded_prev_hash = ev.get("previous_hash")

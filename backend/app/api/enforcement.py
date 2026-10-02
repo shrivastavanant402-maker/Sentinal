@@ -69,17 +69,23 @@ async def enforce_action(request: ActionRequest) -> DecisionResponse:
         timestamp=now,
     )
 
-    stored = await repo.store_event(ledger_event)
-
-    # ── 4. Attach ledger event_id to the response ────────────────────────────
-    decision.event_id = stored.id
+    try:
+        stored = await repo.store_event(ledger_event)
+        decision.event_id = stored.id
+    except Exception as exc:
+        logger.warning(
+            "Could not persist ledger event for unregistered or invalid agent '%s': %s",
+            request.agent_id,
+            exc,
+        )
+        decision.event_id = None
 
     logger.info(
         "Enforcement: agent=%s action=%s decision=%s event_id=%s",
         request.agent_id,
         request.action,
         decision.decision.value,
-        stored.id,
+        decision.event_id,
     )
 
     return decision
