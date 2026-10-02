@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { getConfig, onConfigChanged } from './config';
 import { HealthClient } from './client/health';
+import { EnforcementClient } from './client/enforcement';
 import { AegisMeshStatusBar } from './ui/statusBar';
 import { registerCommands } from './commands';
 
 let statusBar: AegisMeshStatusBar | undefined;
 let healthClient: HealthClient | undefined;
+let enforcementClient: EnforcementClient | undefined;
 
 /**
  * Extension entry point. Called by VS Code when the extension is activated.
@@ -16,11 +18,12 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // Initialize service singletons
   healthClient = new HealthClient();
+  enforcementClient = new EnforcementClient();
   statusBar = new AegisMeshStatusBar();
   context.subscriptions.push(statusBar);
 
   // Register commands
-  registerCommands(context, statusBar, healthClient);
+  registerCommands(context, statusBar, healthClient, enforcementClient);
 
   // Listen for configuration updates
   const configSub = onConfigChanged((newConfig) => {
@@ -43,4 +46,5 @@ export function deactivate(): void {
     statusBar = undefined;
   }
   healthClient = undefined;
+  enforcementClient = undefined;
 }

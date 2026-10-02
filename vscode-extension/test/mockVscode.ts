@@ -45,6 +45,9 @@ export const window = {
   showErrorMessage: async (_message: string, ..._items: string[]) => {
     return _items[0];
   },
+  showInputBox: async (options?: any) => {
+    return options?.value || '';
+  },
 };
 
 export const commands = {

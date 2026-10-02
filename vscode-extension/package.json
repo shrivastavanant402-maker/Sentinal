@@ -33,6 +33,11 @@
         "command": "aegismesh.checkConnection",
         "title": "AegisMesh: Check Connection",
         "category": "AegisMesh"
+      },
+      {
+        "command": "aegismesh.testAction",
+        "title": "AegisMesh: Test Action",
+        "category": "AegisMesh"
       }
     ],
     "configuration": {
