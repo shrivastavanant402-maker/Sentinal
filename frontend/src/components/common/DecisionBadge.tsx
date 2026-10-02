@@ -16,7 +16,11 @@ export const DecisionBadge: React.FC<DecisionBadgeProps> = ({ decision, size = '
     );
   }
 
-  const rawDecision = (decision.decision || (decision.allowed === true ? 'allow' : decision.allowed === false ? 'block' : 'pending')).toString().toLowerCase();
+  const rawDecision = (
+    decision.status ||
+    decision.decision ||
+    (decision.allowed === true ? 'allow' : decision.allowed === false ? 'block' : 'pending')
+  ).toString().toLowerCase();
 
   let label = rawDecision.toUpperCase();
   let className = 'decision-allow';
