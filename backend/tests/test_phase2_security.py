@@ -387,6 +387,151 @@ async def test_auto_quarantine_triggers_below_threshold(quarantine_controller, r
     assert result.trigger == "trust_score"
 
 
+@pytest.mark.asyncio
+async def test_quarantine_state_persisted_in_repository(quarantine_controller, repo, registered_agent):
+    """Quarantine persists in the repository — not just in-memory."""
+    await quarantine_controller.quarantine_agent(
+        agent_id="test-agent-01",
+        reason="Persistence test",
+        trigger="test",
+    )
+    # Verify via repo directly (not through controller cache)
+    agent = await repo.get_agent("test-agent-01")
+    assert agent.status == AgentStatus.QUARANTINED
+
+
+@pytest.mark.asyncio
+async def test_quarantine_event_is_auditable(quarantine_controller, repo, registered_agent):
+    """Quarantine transitions produce ledger events (auditable)."""
+    initial_events = await repo.list_events()
+    initial_count = len(initial_events)
+
+    await quarantine_controller.quarantine_agent(
+        agent_id="test-agent-01",
+        reason="Audit test",
+        trigger="test",
+    )
+
+    events_after = await repo.list_events()
+    assert len(events_after) > initial_count
+    # The last event should be the quarantine event
+    quarantine_event = events_after[-1]
+    assert quarantine_event.action == "agent.quarantine"
+    assert quarantine_event.agent_id == "test-agent-01"
+
+
+@pytest.mark.asyncio
+async def test_release_event_is_auditable(quarantine_controller, repo, registered_agent):
+    """Release transitions produce ledger events (auditable)."""
+    await quarantine_controller.quarantine_agent(
+        agent_id="test-agent-01",
+        reason="Pre-release",
+        trigger="test",
+    )
+    events_before = await repo.list_events()
+    before_count = len(events_before)
+
+    await quarantine_controller.release_agent("test-agent-01", reason="Release audit test")
+
+    events_after = await repo.list_events()
+    assert len(events_after) > before_count
+    release_event = events_after[-1]
+    assert release_event.action == "agent.quarantine.release"
+
+
+@pytest.mark.asyncio
+async def test_list_quarantined_reflects_repo_truth(quarantine_controller, repo, registered_agent):
+    """list_quarantined returns agents quarantined via any path, not just the controller."""
+    # Quarantine directly via repository (bypassing controller cache)
+    await repo.update_agent_status("test-agent-01", AgentStatus.QUARANTINED)
+
+    quarantined = await quarantine_controller.list_quarantined()
+    assert "test-agent-01" in quarantined
+
+
+@pytest.mark.asyncio
+async def test_trust_cannot_turn_block_into_allow(repo, contract_repo, trust_engine, registered_agent):
+    """High trust score cannot override a contract BLOCK into ALLOW."""
+    await contract_repo.create_contract(ContractCreate(
+        id="c-strict",
+        agent_id="test-agent-01",
+        name="Strict Contract",
+        allowed_tools=["web.search"],
+        forbidden_tools=["shell.exec"],
+        risk_level=RiskLevel.MEDIUM,
+    ))
+
+    fresh_tracker = ProvenanceTracker()
+    set_provenance_tracker(fresh_tracker)
+
+    pdp = PolicyDecisionPoint(
+        contract_repository=contract_repo,
+        trust_evaluator=trust_engine,
+        provenance_evaluator=fresh_tracker,
+    )
+    set_pdp(pdp)
+
+    # Agent has perfect trust (100) — but shell.exec is forbidden
+    request = ActionRequest(agent_id="test-agent-01", action="shell.exec")
+    decision = await pdp.evaluate(request, agent=registered_agent)
+    assert decision.decision == DecisionStatus.BLOCK
+    assert decision.allowed is False
+
+
+@pytest.mark.asyncio
+async def test_trust_induced_quarantine_blocks_subsequent_request(
+    repo, contract_repo, trust_engine, registered_agent
+):
+    """After trust drops below quarantine threshold, next PDP evaluation returns QUARANTINE."""
+    await contract_repo.create_contract(ContractCreate(
+        id="c-boundary",
+        agent_id="test-agent-01",
+        name="Boundary Contract",
+        allowed_tools=["web.search"],
+        forbidden_tools=["shell.exec"],
+        risk_level=RiskLevel.MEDIUM,
+    ))
+
+    fresh_tracker = ProvenanceTracker()
+    set_provenance_tracker(fresh_tracker)
+
+    qc = QuarantineController(repository=repo)
+    set_quarantine_controller(qc)
+
+    pdp = PolicyDecisionPoint(
+        contract_repository=contract_repo,
+        trust_evaluator=trust_engine,
+        provenance_evaluator=fresh_tracker,
+        quarantine_controller=qc,
+    )
+    set_pdp(pdp)
+
+    # Hammer trust score down across all dimensions to trigger quarantine
+    for _ in range(3):
+        await trust_engine.apply_decision("test-agent-01", DecisionStatus.BLOCK, RiskLevel.CRITICAL)
+    for _ in range(2):
+        await trust_engine.apply_integrity_violation("test-agent-01", RiskLevel.CRITICAL)
+    for _ in range(2):
+        await trust_engine.apply_consistency_violation("test-agent-01", RiskLevel.CRITICAL)
+
+    score = await trust_engine.get_score("test-agent-01")
+    assert score.composite < QUARANTINE_TRUST_THRESHOLD
+
+    # Auto-quarantine via controller
+    await qc.maybe_quarantine("test-agent-01", trust_score=score.composite)
+
+    # Refresh agent from repo (status is now QUARANTINED)
+    agent = await repo.get_agent("test-agent-01")
+    assert agent.status == AgentStatus.QUARANTINED
+
+    # Next request should be QUARANTINE-blocked at the fast-path (step 1 of PDP)
+    request = ActionRequest(agent_id="test-agent-01", action="web.search")
+    decision = await pdp.evaluate(request, agent=agent)
+    assert decision.decision == DecisionStatus.QUARANTINE
+    assert decision.allowed is False
+    assert decision.reason.value == "AGENT_QUARANTINED"
+
+
 # ===========================================================================
 # PDP PHASE 2 INTEGRATION TESTS (3)
 # ===========================================================================

@@ -181,7 +181,6 @@ class TrustEngine:
                 score.consecutive_clean += 1
                 # Recovery: +1 per 10 consecutive clean decisions
                 if score.consecutive_clean % _RECOVERY_STRIDE == 0:
-                    penalty = _SEVERITY_PENALTIES.get(risk_level, 0.0)
                     score.compliance = min(100.0, score.compliance + _RECOVERY_DELTA)
                     score.consistency = min(100.0, score.consistency + _RECOVERY_DELTA)
                     logger.debug(

@@ -252,12 +252,22 @@ class QuarantineController:
     # ------------------------------------------------------------------
 
     async def is_quarantined(self, agent_id: str) -> bool:
+        """Check if an agent is quarantined (repository is authoritative)."""
         async with self._lock:
-            return agent_id in self._quarantined
+            if agent_id in self._quarantined:
+                return True
+        # Fall back to repository for agents quarantined externally
+        repo = self._get_repo()
+        agent = await repo.get_agent(agent_id)
+        if agent and agent.status == AgentStatus.QUARANTINED:
+            return True
+        return False
 
     async def list_quarantined(self) -> List[str]:
-        async with self._lock:
-            return list(self._quarantined.keys())
+        """List all quarantined agents (repository is authoritative)."""
+        repo = self._get_repo()
+        agents = await repo.list_agents()
+        return [a.id for a in agents if a.status == AgentStatus.QUARANTINED]
 
 
 # ---------------------------------------------------------------------------
