@@ -1,10 +1,10 @@
 import React from 'react';
-import { Shield, RefreshCw, Activity, AlertTriangle, Layers, Radio } from 'lucide-react';
+import { Shield, RefreshCw, Activity, AlertTriangle, Layers, Radio, FlaskConical } from 'lucide-react';
 import { HealthStatus } from '../../types';
 
 interface HeaderProps {
-  currentTab: 'dashboard' | 'alerts';
-  onTabChange: (tab: 'dashboard' | 'alerts') => void;
+  currentTab: 'dashboard' | 'alerts' | 'attack_lab';
+  onTabChange: (tab: 'dashboard' | 'alerts' | 'attack_lab') => void;
   health: HealthStatus | null;
   activeAgentCount: number;
   totalAgentCount: number;
@@ -64,6 +64,14 @@ export const Header: React.FC<HeaderProps> = ({
               {alertCount}
             </span>
           )}
+        </button>
+
+        <button
+          onClick={() => onTabChange('attack_lab')}
+          className={`nav-tab ${currentTab === 'attack_lab' ? 'nav-tab-active' : ''}`}
+        >
+          <FlaskConical size={16} />
+          <span>Attack Lab</span>
         </button>
       </nav>
 

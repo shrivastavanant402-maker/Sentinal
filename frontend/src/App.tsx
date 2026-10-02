@@ -11,9 +11,10 @@ import { Header } from './components/layout/Header';
 import { ErrorMessage } from './components/common/ErrorMessage';
 import { Dashboard } from './pages/Dashboard';
 import { Alerts } from './pages/Alerts';
+import { AttackLab } from './pages/AttackLab';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts'>('dashboard');
+  const [currentTab, setCurrentTab] = useState<'dashboard' | 'alerts' | 'attack_lab'>('dashboard');
   const [health, setHealth] = useState<HealthStatus | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [events, setEvents] = useState<EventLog[]>([]);
@@ -135,7 +136,7 @@ export default function App() {
               setCurrentTab('alerts');
             }}
           />
-        ) : (
+        ) : currentTab === 'alerts' ? (
           <Alerts
             alerts={alerts}
             agents={agents}
@@ -147,6 +148,11 @@ export default function App() {
               setCurrentTab('dashboard');
               // Switch to dashboard where the event stream is visible
             }}
+          />
+        ) : (
+          <AttackLab
+            agents={agents}
+            isLoading={isLoading}
           />
         )}
       </main>

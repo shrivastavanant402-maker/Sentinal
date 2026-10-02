@@ -88,3 +88,29 @@ export interface DashboardMetrics {
   criticalAlerts: number;
   blockedActions: number;
 }
+
+export type AttackScenarioType = 'prompt_injection' | 'secret_exfiltration' | 'rogue_agent';
+
+export type AttackStatus = 'ready' | 'running' | 'completed' | 'failed';
+
+export interface AttackResult {
+  scenario: AttackScenarioType;
+  target_agent_id: string;
+  status: AttackStatus;
+  event?: EventLog | null;
+  decision?: EventDecision | null;
+  alert?: Alert | null;
+  trust_change?: {
+    previous_score: number;
+    new_score: number;
+  } | null;
+  enforcement?: {
+    action: string;
+    decision: string;
+    agent_quarantined?: boolean;
+  } | null;
+  message?: string;
+  error?: string;
+  timestamp?: string;
+}
+

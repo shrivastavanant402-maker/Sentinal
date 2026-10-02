@@ -39,6 +39,8 @@
 - [Developer 1] Created REST API endpoints in backend/app/api/contracts.py: GET /contracts/{agent_id}, PUT /contracts/{agent_id}, GET /contracts (2026-10-02)
 - [Developer 1] Created test_contracts_and_policy.py with 20 comprehensive unit and integration tests (2026-10-02)
 - All 61 backend tests passing with 100% pass rate (2026-10-02)
+- [Developer 2] Created Attack Lab UI foundation with dynamic agent selector, scenario selection, attack status, and modular result structure (2026-10-02)
+- [Developer 2] Added TypeScript types (AttackScenarioType, AttackStatus, AttackResult) and added Attack Lab to top navigation (2026-10-02)
 
 ## In Progress
 
