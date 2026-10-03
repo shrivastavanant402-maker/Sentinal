@@ -301,6 +301,7 @@ function AppShell({
   alertCount,
   isRefreshing,
   onRefresh,
+  onNavClick,
   children,
 }: {
   view: View;
@@ -309,6 +310,7 @@ function AppShell({
   alertCount: number;
   isRefreshing: boolean;
   onRefresh: () => void;
+  onNavClick?: (view: View) => void;
   children: ReactNode;
 }) {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -335,7 +337,7 @@ function AppShell({
               <Button
                 key={item.id}
                 className={`nav-button ${view === item.id ? "active" : ""}`}
-                onClick={() => setView(item.id)}
+                onClick={() => (onNavClick ? onNavClick(item.id) : setView(item.id))}
                 title={item.label}
               >
                 <Icon name={item.icon} />
@@ -950,10 +952,12 @@ function IncidentView({
   go,
   alertsList,
   runtimeEventsList,
+  onOpenReplay,
 }: {
   go: (view: View, eventId?: string | null) => void;
   alertsList: Alert[];
   runtimeEventsList: RuntimeEvent[];
+  onOpenReplay?: (eventId?: string) => void;
 }) {
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
   const currentAlert = alertsList.find(a => a.id === selectedAlertId) || alertsList[0];
@@ -970,7 +974,16 @@ function IncidentView({
           <Icon name="copy" size={14} />
           Export evidence
         </Button>
-        <Button variant="primary" onClick={() => go("replay", currentAlert?.event_id)}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (onOpenReplay) {
+              onOpenReplay(currentAlert?.event_id || undefined);
+            } else {
+              go("replay", currentAlert?.event_id);
+            }
+          }}
+        >
           Open replay
         </Button>
       </PageHeader>
@@ -1360,10 +1373,12 @@ function AttackLabView({
   agents,
   onSimulate,
   go,
+  onOpenReplay,
 }: {
   agents: Agent[];
   onSimulate: (req: { agent_id: string; scenario: AttackScenarioType }) => Promise<AttackSimulateResponse>;
   go: (view: View, eventId?: string | null) => void;
+  onOpenReplay?: (eventId?: string) => void;
 }) {
   const [scenario, setScenario] = useState<AttackScenarioType>("prompt_injection");
   const [selectedAgentId, setSelectedAgentId] = useState(agents[1]?.id || "researcher-01");
@@ -1544,7 +1559,13 @@ function AttackLabView({
                 <Button
                   variant="secondary"
                   className="full-width"
-                  onClick={() => go("replay", result.event_id)}
+                  onClick={() => {
+                    if (onOpenReplay) {
+                      onOpenReplay(result.event_id || undefined);
+                    } else {
+                      go("replay", result.event_id);
+                    }
+                  }}
                 >
                   Forensic Replay
                 </Button>
@@ -1641,7 +1662,7 @@ export default function App() {
     const syncFromUrl = () => {
       const path = window.location.pathname.toLowerCase();
       const params = new URLSearchParams(window.location.search);
-      const eid = params.get("event_id");
+      const eid = params.get("event_id") || params.get("id");
       if (eid) {
         setReplayEventId(eid);
       }
@@ -1679,6 +1700,17 @@ export default function App() {
       window.history.pushState(null, "", target);
     }
   }, [replayEventId]);
+
+  const handleOpenReplay = useCallback((eventId?: string | null) => {
+    handleSetView("replay", eventId || null);
+  }, [handleSetView]);
+
+  const handleNavClick = useCallback((nextView: View) => {
+    if (nextView === "replay") {
+      setReplayEventId(null);
+    }
+    handleSetView(nextView, nextView === "replay" ? null : undefined);
+  }, [handleSetView]);
 
   // Poll backend data
   const loadData = useCallback(async () => {
@@ -1814,6 +1846,7 @@ export default function App() {
       alertCount={backendAlerts.length}
       isRefreshing={isRefreshing}
       onRefresh={loadData}
+      onNavClick={handleNavClick}
     >
       {view === "operations" && (
         <OperationsView
@@ -1836,17 +1869,20 @@ export default function App() {
           go={handleSetView}
           alertsList={backendAlerts}
           runtimeEventsList={mergedRuntimeEvents}
+          onOpenReplay={handleOpenReplay}
         />
       )}
       {view === "replay" && (
-        <AttackReplay
-          events={backendEvents}
-          agents={backendAgents}
-          isLoading={isRefreshing}
-          onRefresh={loadData}
-          initialEventId={replayEventId}
-          onNavigateToAlerts={() => handleSetView("incident")}
-        />
+        <div className="page" style={{ maxWidth: "1640px", padding: "24px 32px 56px" }}>
+          <AttackReplay
+            events={backendEvents}
+            agents={backendAgents}
+            isLoading={isRefreshing}
+            onRefresh={loadData}
+            initialEventId={replayEventId}
+            onNavigateToAlerts={() => handleSetView("incident")}
+          />
+        </div>
       )}
       {view === "ledger" && (
         <LedgerView
@@ -1859,6 +1895,7 @@ export default function App() {
           agents={mergedAgents}
           onSimulate={apiSimulateAttack}
           go={handleSetView}
+          onOpenReplay={handleOpenReplay}
         />
       )}
       {view === "ide" && (

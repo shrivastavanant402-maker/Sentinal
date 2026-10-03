@@ -183,22 +183,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
     }
   };
 
-  // Switch to initialEventId when it changes
+  // Dynamic replay selection: load initialEventId if specified, or reset to truthful empty selection state
   useEffect(() => {
     if (initialEventId) {
       loadReplay(initialEventId);
+    } else {
+      setSelectedEventId(null);
+      setReplayData(null);
+      setReplayError(null);
     }
   }, [initialEventId]);
 
-  // Auto-select preferred security/enforcement event on initial load if no event is selected
-  useEffect(() => {
-    if (!initialEventId && !selectedEventId && events.length > 0) {
-      const preferred = events.find(e => e.event_type === 'enforcement') || events[0];
-      if (preferred) {
-        loadReplay(preferred.id);
-      }
-    }
-  }, [events, initialEventId, selectedEventId]);
 
   return (
     <div className="attack-replay-page-flow">
@@ -313,7 +308,9 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
           <div className="event-list-container flex flex-col gap-2 max-h-[680px] overflow-y-auto pr-1">
             {filteredEvents.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted font-mono">
-                {events.length === 0 ? "No recorded events in ledger." : "No events match the selected criteria."}
+                {events.length === 0
+                  ? 'No recorded events found in ledger stream.'
+                  : 'No events match the selected criteria.'}
               </div>
             ) : (
               filteredEvents.map(event => {
@@ -392,7 +389,15 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     ? 'bg-emerald/15 text-emerald border border-emerald/30'
                     : 'bg-rose/15 text-rose border border-rose/30'
                 }`}>
-                  <CheckCircle2 size={12} /> VERIFIED
+                  {replayData.ledger.chain_valid ? (
+                    <>
+                      <CheckCircle2 size={12} /> VERIFIED
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={12} /> INVALID
+                    </>
+                  )}
                 </span>
               </div>
             )}
@@ -721,11 +726,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
 
                     <div className="mt-3 p-2 rounded bg-emerald/10 border border-emerald/20 flex items-center justify-between text-xs font-mono">
                       <span className="flex items-center gap-1.5 text-emerald font-semibold">
-                        <CheckCircle2 size={14} /> {replayData.ledger?.chain_valid !== false ? 'Cryptographic SHA256 Chaining Verified' : 'Cryptographic Chain Integrity Check Failed'}
+                        {replayData.ledger?.chain_valid ? (
+                          <>
+                            <CheckCircle2 size={14} /> Cryptographic SHA256 Chaining Verified
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={14} className="text-rose" /> Hash Chain Verification Failed
+                          </>
+                        )}
                       </span>
-                      <span className="text-muted text-[11px]">
-                        {replayData.ledger?.chain_valid !== false ? 'Immutable Storage Record' : 'Chain Warning'}
-                      </span>
+                      <span className="text-muted text-[11px]">Immutable Storage Record</span>
                     </div>
                   </div>
                 </div>
