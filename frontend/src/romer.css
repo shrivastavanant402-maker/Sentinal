@@ -807,3 +807,138 @@
 .romer-subview-content code {
   color: #FFFFFF !important;
 }
+
+/* ============================================================================
+   QUICK START MODAL
+   ============================================================================ */
+.romer-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: romerFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes romerFadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.romer-modal-card {
+  background: #121215;
+  border: 1px solid #282830;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 680px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.romer-modal-header {
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid #222227;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.romer-modal-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.romer-modal-desc {
+  font-size: 13px;
+  color: var(--rm-text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.romer-modal-close {
+  background: transparent;
+  border: none;
+  color: var(--rm-text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+.romer-modal-close:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.romer-modal-body {
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.romer-quickstart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+@media (max-width: 640px) {
+  .romer-quickstart-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.romer-quickstart-card {
+  background: #16161a;
+  border: 1px solid #222227;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+.romer-quickstart-card:hover {
+  border-color: #383842;
+  background: #19191e;
+}
+
+.romer-quickstart-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.romer-quickstart-card-desc {
+  font-size: 12px;
+  color: var(--rm-text-secondary);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.romer-modal-footer {
+  padding: 16px 28px;
+  background: #0d0d10;
+  border-top: 1px solid #222227;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
