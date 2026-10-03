@@ -526,19 +526,15 @@ function EventTable({
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. OPERATIONS VIEW
 // ─────────────────────────────────────────────────────────────────────────────
-function OperationsView({
-  go,
-  agents,
-  runtimeEventsList,
-  alertsList,
-  ledgerReport,
-}: {
+function OperationsView(props: {
   go: (view: View, eventId?: string | null) => void;
   agents: Agent[];
   runtimeEventsList: RuntimeEvent[];
   alertsList: Alert[];
   ledgerReport: LedgerReport | null;
+  onRefresh?: () => Promise<void> | void;
 }) {
+  const { go, agents, runtimeEventsList, alertsList, ledgerReport } = props;
   const [query, setQuery] = useState("");
   const [agent, setAgent] = useState("All agents");
   const [decision, setDecision] = useState("All decisions");
