@@ -3,7 +3,6 @@ import {
   agents as seedAgents,
   mission as defaultMission,
   replayEvents as seedReplayEvents,
-  runtimeEvents as seedRuntimeEvents,
 } from "./data";
 import type {
   FigmaAgent as Agent,
@@ -235,11 +234,12 @@ function Select({
 function Status({ value }: { value: string }) {
   const normalized = value.toLowerCase();
   const tone =
-    normalized.includes("critical") ||
-    normalized.includes("block") ||
-    normalized.includes("quarantin") ||
-    normalized.includes("fail") ||
-    normalized.includes("halt")
+    normalized.includes("quarantin")
+      ? "quarantine"
+      : normalized.includes("critical") ||
+        normalized.includes("block") ||
+        normalized.includes("fail") ||
+        normalized.includes("halt")
       ? "critical"
       : normalized.includes("high") ||
         normalized.includes("require approval") ||
@@ -467,6 +467,7 @@ function FilterBar({
           <option>All decisions</option>
           <option>Allow</option>
           <option>Block</option>
+          <option>Quarantine</option>
           <option>Require approval</option>
           <option>Sandbox</option>
         </Select>
@@ -515,7 +516,7 @@ function EventTable({
         </Button>
       ))}
       {events.length === 0 && (
-        <div className="empty-state">No events match the current filters.</div>
+        <div className="empty-state">No runtime enforcement events recorded.</div>
       )}
     </div>
   );
@@ -560,7 +561,9 @@ function OperationsView({
 
   const activeCount = agents.filter((a) => a.status === "Active").length;
   const quarantinedCount = agents.filter((a) => a.status === "Quarantined").length;
-  const blockedCount = runtimeEventsList.filter((e) => e.decision === "Block").length;
+  const blockedCount = runtimeEventsList.filter(
+    (e) => e.decision === "Block" || e.decision === "Quarantine"
+  ).length;
   const blockRate = runtimeEventsList.length > 0
     ? ((blockedCount / runtimeEventsList.length) * 100).toFixed(2)
     : "0.00";
@@ -618,8 +621,8 @@ function OperationsView({
             <strong>Needs attention</strong>
             <span>
               {alertsList.length > 0
-                ? `${alertsList.length} security alerts detected`
-                : "Active incident telemetry & security containment"}
+                ? `${alertsList.length} security alert${alertsList.length === 1 ? "" : "s"} detected`
+                : "No active security alerts"}
             </span>
           </div>
         </div>
@@ -647,21 +650,16 @@ function OperationsView({
             </div>
           ))
         ) : (
-          <div className="priority-row critical-row">
-            <Status value="Critical" />
+          <div className="priority-row" style={{ opacity: 0.9 }}>
+            <Status value="Healthy" />
             <div className="priority-content">
-              <strong>Unauthorized data export attempt</strong>
-              <span>
-                Researcher-01 attempted <code>database.export("customers")</code>
-              </span>
+              <strong>No active security alerts</strong>
+              <span>All autonomous agent actions compliant with active mission contracts</span>
             </div>
             <div className="priority-meta">
-              <span>Contained in 19 ms</span>
-              <small>10:31:06 IST</small>
+              <span>Zero violations</span>
+              <small>Runtime PEP active</small>
             </div>
-            <Button variant="primary" onClick={() => go("incident")}>
-              Investigate
-            </Button>
           </div>
         )}
       </section>
@@ -1327,8 +1325,8 @@ function LedgerView({
   onVerifyLedger: () => Promise<LedgerReport>;
 }) {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<RuntimeEvent>(
-    runtimeEventsList[0] || seedRuntimeEvents[0]
+  const [selected, setSelected] = useState<RuntimeEvent | null>(
+    runtimeEventsList[0] || null
   );
   const [verifyStep, setVerifyStep] = useState(-1);
   const [verifyResult, setVerifyResult] = useState<LedgerReport | null>(null);
@@ -1820,15 +1818,15 @@ export default function App() {
     try {
       const [hData, aData, eData, alData, lData] = await Promise.all([
         fetchHealth().catch(() => ({ status: "offline" })),
-        fetchAgents().catch(() => []),
-        fetchEvents(1000).catch(() => []),
-        fetchAlerts(1000).catch(() => []),
+        fetchAgents().catch(() => null),
+        fetchEvents(1000).catch(() => null),
+        fetchAlerts(1000).catch(() => null),
         apiVerifyLedger().catch(() => null),
       ]);
       setHealth(hData as HealthStatus);
-      if (Array.isArray(aData) && aData.length > 0) setBackendAgents(aData);
-      if (Array.isArray(eData) && eData.length > 0) setBackendEvents(eData);
-      if (Array.isArray(alData) && alData.length > 0) setBackendAlerts(alData);
+      if (Array.isArray(aData)) setBackendAgents(aData);
+      if (Array.isArray(eData)) setBackendEvents(eData);
+      if (Array.isArray(alData)) setBackendAlerts(alData);
       if (lData) setLedgerReport(lData);
     } catch {
       // Ignored
@@ -1874,9 +1872,9 @@ export default function App() {
     });
   }, [backendAgents]);
 
-  // Map Backend Events to Figma RuntimeEvent format, merging with seed events
+  // Map Backend Events to Figma RuntimeEvent format
   const mergedRuntimeEvents: RuntimeEvent[] = useMemo(() => {
-    if (backendEvents.length === 0) return seedRuntimeEvents;
+    if (backendEvents.length === 0) return [];
     const sorted = [...backendEvents].sort((a, b) => (b.seq ?? 0) - (a.seq ?? 0));
     return sorted.map((be) => {
       const rawDecision = (
@@ -1892,11 +1890,13 @@ export default function App() {
       const decision: Decision =
         rawDecision === "ALLOW"
           ? "Allow"
-          : rawDecision === "APPROVAL" || rawDecision.includes("APPROV")
-            ? "Require approval"
-            : rawDecision === "SANDBOX"
-              ? "Sandbox"
-              : "Block";
+          : rawDecision === "QUARANTINE" || rawDecision.includes("QUARANTIN")
+            ? "Quarantine"
+            : rawDecision === "APPROVAL" || rawDecision.includes("APPROV")
+              ? "Require approval"
+              : rawDecision === "SANDBOX"
+                ? "Sandbox"
+                : "Block";
       const riskLevel = (be.decision?.risk_level || "low").toLowerCase();
       const severity =
         riskLevel === "critical"

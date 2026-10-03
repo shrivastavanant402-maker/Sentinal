@@ -1,6 +1,6 @@
 export type View = "operations" | "agents" | "incident" | "replay" | "ledger" | "attack_lab" | "ide";
 export type FigmaSeverity = "Critical" | "High" | "Medium" | "Low";
-export type FigmaDecision = "Allow" | "Block" | "Require approval" | "Sandbox";
+export type FigmaDecision = "Allow" | "Block" | "Require approval" | "Sandbox" | "Quarantine";
 export type FigmaAgentStatus = "Active" | "Degraded" | "Halted" | "Quarantined" | "Offline";
 
 export interface FigmaAgent {

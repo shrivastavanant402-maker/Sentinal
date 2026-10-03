@@ -216,6 +216,8 @@ select { height: 30px; padding: 0 27px 0 10px; color: var(--text-2); background:
 .status.warning > span { background: var(--warning); }
 .status.success { color: var(--success-text); }
 .status.success > span { background: var(--success); }
+.status.quarantine { color: #b84d58; font-weight: 600; }
+.status.quarantine > span { background: #b84d58; }
 
 .filter-bar { min-height: 47px; display: flex; align-items: center; gap: 7px; padding: 8px 10px; background: var(--surface-inset); border-bottom: 1px solid var(--border); }
 .filter-bar .input-wrap { width: 230px; }
