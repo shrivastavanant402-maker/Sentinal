@@ -67,6 +67,17 @@ def setup_test_env():
         created_at=now,
         updated_at=now,
     )
+    repo.agents["ide-agent-01"] = AgentResponse(
+        id="ide-agent-01",
+        name="VS Code IDE Sentinel",
+        role="ide_sentinel",
+        status=AgentStatus.ACTIVE,
+        trust_score=100.0,
+        capabilities=["shell.exec", "fs.read", "fs.write", "code.analyze"],
+        metadata={"description": "VS Code developer assistant and workspace execution sentinel"},
+        created_at=now,
+        updated_at=now,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -450,3 +461,35 @@ async def test_replay_contains_actual_persisted_identifiers():
         assert replay_body["ledger"]["previous_hash"] == persisted_event.previous_hash
         assert replay_body["ledger"]["content_hash"] == persisted_event.content_hash
         assert replay_body["ledger"]["seq"] == persisted_event.seq
+
+
+@pytest.mark.asyncio
+async def test_replay_extracts_command_and_ide_agent_identity():
+    """6. Replay accurately extracts the real user command and IDE agent name."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        # Submit an enforcement request from ide-agent-01 with a Python command
+        enforce_resp = await client.post("/enforce", json={
+            "agent_id": "ide-agent-01",
+            "action": "shell.exec",
+            "payload": {
+                "command": "Write a Python Hello World program",
+                "source": "vscode"
+            }
+        })
+        assert enforce_resp.status_code == 200
+        enforce_data = enforce_resp.json()
+        event_id = enforce_data["event_id"]
+        assert event_id is not None
+
+        # Replay the event and verify the command and agent identity are surfaced
+        replay_resp = await client.get(f"/attacks/replay/{event_id}")
+        assert replay_resp.status_code == 200
+        replay_data = replay_resp.json()
+
+        assert replay_data["agent_id"] == "ide-agent-01"
+        assert replay_data["agent_name"] == "VS Code IDE Sentinel"
+        assert replay_data["action"] == "shell.exec"
+        assert replay_data["command"] == "Write a Python Hello World program"
+        assert replay_data["decision"] == "ALLOW"
+        assert replay_data["allowed"] is True

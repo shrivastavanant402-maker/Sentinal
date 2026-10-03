@@ -54,9 +54,10 @@ def create_mcp_server(
         ),
     )
     async def aegismesh_enforce(
-        agent_id: str,
-        action: str,
+        agent_id: str = "ide-agent-01",
+        action: str = "shell.exec",
         payload: Optional[Dict[str, Any]] = None,
+        command: Optional[str] = None,
         mission_id: Optional[str] = None,
         session_id: Optional[str] = None,
         provenance: Optional[Dict[str, Any]] = None,
@@ -64,10 +65,15 @@ def create_mcp_server(
         """
         Submits an agent action to the AegisMesh PEP gate and returns the authoritative decision.
         """
+        effective_agent_id = agent_id or "ide-agent-01"
+        effective_payload = dict(payload or {})
+        if command and "command" not in effective_payload:
+            effective_payload["command"] = command
+
         action_request = ActionRequest(
-            agent_id=agent_id,
+            agent_id=effective_agent_id,
             action=action,
-            payload=payload or {},
+            payload=effective_payload,
             mission_id=mission_id,
             session_id=session_id,
             provenance=provenance,

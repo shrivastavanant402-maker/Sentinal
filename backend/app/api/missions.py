@@ -43,6 +43,13 @@ async def ensure_foundational_agents() -> None:
             capabilities=["report.generate", "fs.read", "fs.write"],
             metadata={"description": "Artifact synthesis and action execution agent"},
         ),
+        AgentCreate(
+            id="ide-agent-01",
+            name="VS Code IDE Sentinel",
+            role="ide_sentinel",
+            capabilities=["shell.exec", "fs.read", "fs.write", "code.analyze"],
+            metadata={"description": "VS Code developer assistant and workspace execution sentinel"},
+        ),
     ]
     for agent_data in default_agents:
         existing = await repo.get_agent(agent_data.id)

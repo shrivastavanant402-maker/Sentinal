@@ -143,6 +143,8 @@ export interface AttackReplayResponse {
   enforcement_outcome?: string | null;
   resulting_agent_status?: string | null;
   timestamp: string;
+  command?: string | null;
+  agent_name?: string | null;
   payload: Record<string, any>;
   details: Record<string, any>;
   alert?: Alert | null;

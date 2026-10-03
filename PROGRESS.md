@@ -130,6 +130,19 @@
   - Created `backend/tests/test_graph_api.py` with 7 comprehensive tests covering topology structure, sentinel core node, agent metadata, enforcement edges, inferred delegation edges, stats aggregation, and empty-state handling.
   - Full regression verified: 211/211 backend tests passing (100%), frontend typecheck (`tsc --noEmit`) and production build (`vite build`) passing with 0 errors.
 
+- Completed VS Code Telemetry & Forensic Command Replay Integration (2026-10-03)
+  - Registered `ide-agent-01` ("VS Code IDE Sentinel") as an official foundational agent with active capabilities (`shell.exec`, `fs.read`, `fs.write`, `code.analyze`).
+  - Added default mission contract `contract-ide-default` for `ide-agent-01` authorizing safe workspace operations while forbidding dangerous exfiltration actions.
+  - Enhanced `AttackReplayResponse` schema and `GET /attacks/replay/{event_id}` endpoint to automatically extract the executed user command, prompt, or instruction from event payloads alongside the human-readable agent name.
+  - Enhanced `backend/app/mcp/server.py` `aegismesh_enforce` tool with automatic command extraction and default agent attribution.
+  - Updated `frontend/src/pages/AttackReplay.tsx`:
+    * Added "IDE Command" event categorization with cyan badge and terminal icon for VS Code actions.
+    * Added live command preview (`> ...`) on event stream cards in the audit list.
+    * Added dedicated "User Request / Executed Command" display card in Stage 1 of the forensic evidence timeline.
+    * Enhanced search filter to query by executed command text in addition to action, agent, and reason.
+  - Added comprehensive unit test `test_replay_extracts_command_and_ide_agent_identity` in `backend/tests/test_attacks_api.py`.
+  - Full test suite verified: 219/219 backend tests passing (100%), 16/16 VS Code extension tests passing, and frontend build passing with 0 errors.
+
 ## In Progress
 
 ## Next

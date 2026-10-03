@@ -112,6 +112,20 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
       };
     }
 
+    if (
+      event.agent_id === 'ide-agent-01' ||
+      payload.source === 'vscode' ||
+      payload.requested_payload?.source === 'vscode' ||
+      payload.source === 'ide'
+    ) {
+      return {
+        tag: 'IDE Command',
+        type: 'ENFORCEMENT',
+        colorClass: 'text-sky bg-sky/10 border-sky/30',
+        icon: <Terminal size={12} className="text-sky" />,
+      };
+    }
+
     if (event.event_type === 'enforcement') {
       return {
         tag: 'Enforcement',
@@ -155,12 +169,15 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
       // Search query
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase();
+        const reqPayload = event.payload?.requested_payload || event.payload || {};
+        const cmd = String(reqPayload.command || reqPayload.prompt || reqPayload.task || reqPayload.input || '').toLowerCase();
         const matchId = event.id.toLowerCase().includes(q);
         const matchAgent = event.agent_id.toLowerCase().includes(q);
         const matchAction = event.action.toLowerCase().includes(q);
         const matchReason = (event.decision?.reason || '').toLowerCase().includes(q);
         const matchTag = tagInfo.tag.toLowerCase().includes(q);
-        return matchId || matchAgent || matchAction || matchReason || matchTag;
+        const matchCmd = cmd.includes(q);
+        return matchId || matchAgent || matchAction || matchReason || matchTag || matchCmd;
       }
 
       return true;
@@ -357,6 +374,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                       </span>
                     </div>
 
+                    {(() => {
+                      const reqPayload = event.payload?.requested_payload || event.payload || {};
+                      const cmd = reqPayload.command || reqPayload.prompt || reqPayload.task || reqPayload.input || reqPayload.query;
+                      if (!cmd) return null;
+                      return (
+                        <div className="mt-1 text-[11px] text-sky/90 font-mono truncate" title={String(cmd)}>
+                          &gt; {String(cmd)}
+                        </div>
+                      );
+                    })()}
+
                     <div className="mt-1 flex items-center justify-between text-[11px] text-muted font-mono">
                       <span>{formatTimeIST(event.timestamp)}</span>
                       <span className="truncate max-w-[120px]">{event.id.slice(0, 8)}...</span>
@@ -455,8 +483,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <span className="text-muted block text-[11px]">Executing Agent:</span>
                         <span className="text-white font-semibold">
                           {(() => {
+                            if (replayData.agent_name) {
+                              return `${replayData.agent_name} (${replayData.agent_id})`;
+                            }
                             const found = agents.find(a => a.id === replayData.agent_id);
-                            return found ? `${found.name} (${replayData.agent_id})` : (replayData.agent_id || 'Not available');
+                            if (found) {
+                              return `${found.name} (${replayData.agent_id})`;
+                            }
+                            if (replayData.agent_id === 'ide-agent-01') {
+                              return `VS Code IDE Sentinel (${replayData.agent_id})`;
+                            }
+                            return replayData.agent_id || 'Not available';
                           })()}
                         </span>
                       </div>
@@ -469,6 +506,24 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <span className="text-white">{replayData.event_type || 'Not available'}</span>
                       </div>
                     </div>
+
+                    {/* User Request / Executed Command Highlight */}
+                    {(() => {
+                      const reqPayload = replayData.payload?.requested_payload || replayData.payload || {};
+                      const commandText = replayData.command || reqPayload.command || reqPayload.prompt || reqPayload.task || reqPayload.input || reqPayload.query;
+                      if (!commandText) return null;
+                      return (
+                        <div className="mt-3 p-3 rounded-lg bg-sky/10 border border-sky/30 flex flex-col gap-1.5">
+                          <div className="flex items-center gap-1.5 text-sky font-semibold text-xs">
+                            <Terminal size={14} className="text-sky" />
+                            <span>User Request / Executed Command:</span>
+                          </div>
+                          <div className="text-xs font-mono text-white/95 font-medium break-words bg-black/50 p-2.5 rounded border border-white/5 select-all">
+                            {String(commandText)}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Payload inspection */}
                     <div className="mt-3">
