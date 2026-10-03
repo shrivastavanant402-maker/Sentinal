@@ -100,46 +100,48 @@ export function RomerAppShell({
 
       {/* ─── Main Container ─── */}
       <div className="romer-container">
-        {/* Hero Section */}
-        <section className="romer-hero">
-          <h1 className="romer-hero-title">
-            The command dashboard<br />for focused teams
-          </h1>
-          <p className="romer-hero-subtitle">
-            Romer turns scattered signals, approvals, and operating data into one calm dashboard for leadership teams.
-          </p>
+        {/* Hero Section — shown ONLY on landing/overview page */}
+        {view === "operations" && (
+          <section className="romer-hero">
+            <h1 className="romer-hero-title">
+              The command dashboard<br />for focused teams
+            </h1>
+            <p className="romer-hero-subtitle">
+              Romer turns scattered signals, approvals, and operating data into one calm dashboard for leadership teams.
+            </p>
 
-          <div className="romer-hero-row">
-            <div className="romer-hero-ctas">
+            <div className="romer-hero-row">
+              <div className="romer-hero-ctas">
+                <button
+                  type="button"
+                  className="romer-btn-white"
+                  onClick={() => handleNav("operations")}
+                >
+                  Get started
+                </button>
+                <button
+                  type="button"
+                  className="romer-btn-dark"
+                  onClick={() => handleNav("live_map")}
+                >
+                  Book a demo
+                </button>
+              </div>
+
               <button
                 type="button"
-                className="romer-btn-white"
-                onClick={() => setView("operations")}
+                className="romer-hero-link"
+                onClick={onRefresh}
+                style={{ background: "none", border: "none", cursor: "pointer" }}
               >
-                Get started
-              </button>
-              <button
-                type="button"
-                className="romer-btn-dark"
-                onClick={() => setView("live_map")}
-              >
-                Book a demo
+                Live operating layer romer.app/overview &rarr;
               </button>
             </div>
-
-            <button
-              type="button"
-              className="romer-hero-link"
-              onClick={onRefresh}
-              style={{ background: "none", border: "none", cursor: "pointer" }}
-            >
-              Live operating layer romer.app/overview &rarr;
-            </button>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* Framed Executive Command Center Window */}
-        <div className="romer-window-frame">
+        <div className={`romer-window-frame${view !== "operations" ? " is-subview" : ""}`}>
           <div className="romer-dashboard-layout">
             {/* Column 1: Navigation Sidebar inside frame */}
             <aside className="romer-window-nav">
