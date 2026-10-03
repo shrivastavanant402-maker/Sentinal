@@ -264,11 +264,27 @@ async def replay_attack(event_id: str) -> AttackReplayResponse:
     else:
         enforcement_outcome = "Recorded in Audit Ledger"
 
-    # 3. Lookup target agent status if available
+    # 3. Lookup target agent status and human-readable name if available
     agent = await repo.get_agent(event.agent_id)
     resulting_agent_status = agent.status.value if agent else None
+    agent_name = agent.name if agent else ("VS Code IDE Sentinel" if event.agent_id == "ide-agent-01" else None)
 
-    # 4. Lookup linked alert (if any)
+    # 4. Extract real command, user instruction, or prompt from payload
+    req_payload = (event.payload or {}).get("requested_payload") or {}
+    raw_command = (
+        req_payload.get("command")
+        or req_payload.get("prompt")
+        or req_payload.get("task")
+        or req_payload.get("input")
+        or req_payload.get("query")
+        or (event.payload or {}).get("command")
+        or (event.payload or {}).get("prompt")
+        or (event.payload or {}).get("task")
+        or (event.payload or {}).get("input")
+    )
+    command_str = str(raw_command) if raw_command is not None else None
+
+    # 5. Lookup linked alert (if any)
     alerts = await repo.list_alerts(limit=1000)
     linked_alert: Optional[AlertResponse] = None
     for a in alerts:
@@ -276,7 +292,7 @@ async def replay_attack(event_id: str) -> AttackReplayResponse:
             linked_alert = a
             break
 
-    # 5. Build ledger cryptographic information
+    # 6. Build ledger cryptographic information
     events = await repo.list_events(limit=10000, offset=0)
     events_dict = [ev.model_dump() for ev in events]
     chain_report = verify_ledger_chain(events_dict)
@@ -292,8 +308,10 @@ async def replay_attack(event_id: str) -> AttackReplayResponse:
     return AttackReplayResponse(
         event_id=event.id,
         agent_id=event.agent_id,
+        agent_name=agent_name,
         event_type=event.event_type,
         action=event.action,
+        command=command_str,
         decision=decision_val,
         allowed=allowed_val,
         reason=reason_val,

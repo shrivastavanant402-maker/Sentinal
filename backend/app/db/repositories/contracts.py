@@ -95,6 +95,34 @@ def get_default_seed_contracts() -> List[MissionContract]:
     ]
 
 
+def get_ide_seed_contract() -> MissionContract:
+    """Default seed contract for VS Code IDE Sentinel agent."""
+    now = datetime.now(timezone.utc)
+    return MissionContract(
+        id="contract-ide-default",
+        mission_id=None,
+        agent_id="ide-agent-01",
+        name="IDE Sentinel Safe Execution Contract",
+        description="Authorizes developer command execution, workspace file operations, and code inspection in VS Code.",
+        allowed_tools=[
+            "shell.exec",
+            "fs.read",
+            "fs.write",
+            "code.analyze",
+        ],
+        forbidden_tools=[
+            "database.export",
+            "secret.read",
+            "external.post",
+        ],
+        allowed_resources=["workspace://*"],
+        risk_level=RiskLevel.MEDIUM,
+        enabled=True,
+        created_at=now,
+        updated_at=now,
+    )
+
+
 class BaseContractRepository(ABC):
     """Abstract interface for Mission Contracts persistence."""
 
@@ -157,6 +185,10 @@ class InMemoryContractRepository(BaseContractRepository):
             for c in self._contracts.values():
                 if c.agent_id == agent_id and c.enabled:
                     return c
+
+            # 4. Fallback for ide-agent-01 default contract
+            if agent_id == "ide-agent-01":
+                return get_ide_seed_contract()
 
             return None
 

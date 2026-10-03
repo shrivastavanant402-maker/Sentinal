@@ -61,6 +61,8 @@ class AttackReplayResponse(BaseModel):
     enforcement_outcome: Optional[str] = Field(None, description="Enforcement outcome statement")
     resulting_agent_status: Optional[str] = Field(None, description="Status of the agent after enforcement")
     timestamp: datetime = Field(..., description="Timestamp of the event")
+    command: Optional[str] = Field(None, description="Extracted command, user instruction, or prompt")
+    agent_name: Optional[str] = Field(None, description="Human-readable name of the executing agent")
     payload: Dict[str, Any] = Field(default_factory=dict, description="Event payload data")
     details: Dict[str, Any] = Field(default_factory=dict, description="Decision diagnostic details")
     alert: Optional[AlertResponse] = Field(None, description="Linked alert if generated")
