@@ -10,7 +10,6 @@ import {
   AttackReplayResponse,
   AnomalyDetectRequest,
   AnomalyDetectResponse,
-  GraphTopology,
 } from '../types';
 
 const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || '';
@@ -112,10 +111,5 @@ export async function detectAnomalies(request?: AnomalyDetectRequest): Promise<A
     body: JSON.stringify(request || {}),
   });
   return handleResponse<AnomalyDetectResponse>(res, 'Anomaly detection scan failed');
-}
-
-export async function fetchGraphTopology(): Promise<GraphTopology> {
-  const res = await fetch(`${API_BASE}/graph/topology`);
-  return handleResponse<GraphTopology>(res, 'Failed to fetch graph topology');
 }
 
