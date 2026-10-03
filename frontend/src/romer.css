@@ -719,4 +719,87 @@
   padding: 24px;
   background: #0d0d0f;
   overflow-y: auto;
+  color: #FFFFFF;
+}
+
+.romer-subview-content .page {
+  padding: 0 !important;
+  max-width: 100% !important;
+  background: transparent !important;
+  color: #FFFFFF !important;
+}
+
+.romer-subview-content .page-header {
+  margin-bottom: 20px;
+}
+
+.romer-subview-content .page-title {
+  color: #FFFFFF !important;
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.romer-subview-content .page-description {
+  color: var(--rm-text-secondary) !important;
+  font-size: 13px;
+}
+
+/* Guarantee: no white background anywhere inside subviews */
+.romer-subview-content .card,
+.romer-subview-content .panel,
+.romer-subview-content .incident-layout,
+.romer-subview-content .decision-summary,
+.romer-subview-content .decision-grid,
+.romer-subview-content .decision-grid > div,
+.romer-subview-content .table-wrap,
+.romer-subview-content .data-table,
+.romer-subview-content .replay-layout,
+.romer-subview-content .ledger-layout,
+.romer-subview-content .flow-canvas,
+.romer-subview-content .network-canvas {
+  background-color: #121215 !important;
+  border-color: #222227 !important;
+  color: #FFFFFF !important;
+}
+
+.romer-subview-content aside,
+.romer-subview-content .incident-layout > aside,
+.romer-subview-content .state-inspector,
+.romer-subview-content .evidence-inspector {
+  background-color: #0e0e11 !important;
+  border-color: #222227 !important;
+}
+
+.romer-subview-content .table-head {
+  background-color: #16161a !important;
+  border-color: #222227 !important;
+  color: var(--rm-text-secondary) !important;
+}
+
+.romer-subview-content .table-row {
+  border-color: #1a1a1f !important;
+  color: #FFFFFF !important;
+}
+.romer-subview-content .table-row:hover {
+  background-color: #18181d !important;
+}
+
+.romer-subview-content .button.secondary,
+.romer-subview-content button.secondary {
+  background-color: #16161a !important;
+  color: #FFFFFF !important;
+  border: 1px solid #282830 !important;
+}
+
+.romer-subview-content .button.primary,
+.romer-subview-content button.primary {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  font-weight: 600 !important;
+  border: 1px solid #FFFFFF !important;
+}
+
+.romer-subview-content code {
+  color: #FFFFFF !important;
 }

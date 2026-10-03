@@ -69,6 +69,8 @@ export interface LedgerReport {
   checked: number;
   chain_valid: boolean;
   errors: string[];
+  latest_hash?: string;
+  message?: string;
 }
 
 export interface HealthStatus {

@@ -1872,6 +1872,7 @@ export default function App() {
           runtimeEventsList={mergedRuntimeEvents}
           alertsList={backendAlerts}
           ledgerReport={ledgerReport}
+          onRefresh={loadData}
         />
       )}
       {view === "agents" && (
