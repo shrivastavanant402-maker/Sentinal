@@ -20,6 +20,7 @@ export interface FigmaAgent {
 }
 
 export interface RuntimeEvent {
+  id?: string;
   seq: number;
   time: string;
   timestamp?: string;
