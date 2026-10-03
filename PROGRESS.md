@@ -92,9 +92,34 @@
     * Arbitrary IDE terminal/file interception is NOT completed.
     * Package/extension integration is NOT completed.
 
+- Completed Live Map: Visual Multi-Agent Network Graph (2026-10-03)
+  - Created `backend/app/api/graph.py` with `GET /graph/topology` endpoint aggregating agents, trust scores, taint labels, recent events, inter-agent delegation/communication flows, taint propagation lineage, and PEP enforcement edges into a single graph topology payload.
+  - Built `frontend/src/pages/LiveMap.tsx` — full interactive multi-agent graph visualization with:
+    * Force-directed circular layout with SentinelMesh Core as central hub node
+    * Animated SVG edges with flowing particle effects showing real-time data movement
+    * Trust score arc rings around each agent node (green/amber/red graduated)
+    * Quarantine warning pulse animations for isolated agents
+    * Taint contamination indicator badges (☣)
+    * Interactive node selection with animated selection rings
+    * Edge click-to-inspect with floating labels
+    * Rich detail panel showing trust bar, tier badge, taint status, capabilities, connections, and recent PEP decisions
+    * Stats bar with live aggregate metrics (agents, events, blocked/allowed, avg trust)
+    * Edge type legend (PEP Enforcement, Task Delegation, Taint Propagation, Data Flow)
+    * Live/Paused toggle badge with pulsing dot indicator
+    * Grid background with radial center glow
+    * Responsive layout with collapsible detail panel
+    * Auto-refresh every 4 seconds with pause control
+    * Graceful fallback to seed data when backend is offline
+  - Added `GraphTopology`, `GraphNode`, `GraphEdge`, `GraphStats`, `GraphDecision` TypeScript types in `frontend/src/types/index.ts`.
+  - Added `fetchGraphTopology()` API client function in `frontend/src/services/api.ts`.
+  - Added "Live Map" navigation item with network graph icon to the sidebar.
+  - Added URL routing for `/map` and `/graph` paths.
+  - Created `backend/tests/test_graph_api.py` with 7 comprehensive tests covering topology structure, sentinel core node, agent metadata, enforcement edges, inferred delegation edges, stats aggregation, and empty-state handling.
+  - Full regression verified: 211/211 backend tests passing (100%), frontend typecheck (`tsc --noEmit`) and production build (`vite build`) passing with 0 errors.
+
 ## In Progress
 
 ## Next
 
 ## Known Bugs
-- None (2026-10-02)
+- None (2026-10-03)

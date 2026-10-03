@@ -31,6 +31,7 @@ import {
   updateAgentStatus as apiUpdateAgentStatus,
 } from "./services/api";
 import { IDEIntegration } from "./pages/IDEIntegration";
+import { LiveMap } from "./pages/LiveMap";
 
 type IconName =
   | "activity"
@@ -52,7 +53,8 @@ type IconName =
   | "clock"
   | "link"
   | "zap"
-  | "refresh";
+  | "refresh"
+  | "network";
 
 const iconPaths: Record<IconName, ReactNode> = {
   activity: <path d="M3 12h4l2-7 4 14 2-7h6" />,
@@ -134,6 +136,14 @@ const iconPaths: Record<IconName, ReactNode> = {
       <path d="M3 3v5h5" />
       <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
       <path d="M16 21h5v-5" />
+    </>
+  ),
+  network: (
+    <>
+      <circle cx="12" cy="5" r="2.5" />
+      <circle cx="5" cy="19" r="2.5" />
+      <circle cx="19" cy="19" r="2.5" />
+      <path d="M12 7.5v4M7 17.5 10.5 12M17 17.5 13.5 12" />
     </>
   ),
 };
@@ -292,6 +302,7 @@ const navItems: { id: View; label: string; icon: IconName; count?: number }[] = 
   { id: "ledger", label: "Audit ledger", icon: "ledger" },
   { id: "attack_lab", label: "Attack Lab", icon: "zap" },
   { id: "ide", label: "IDE / MCP", icon: "shield" },
+  { id: "live_map", label: "Live Map", icon: "network" },
 ];
 
 function AppShell({
@@ -1772,6 +1783,9 @@ function ConfirmDialog({
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN APP COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+import { RomerAppShell } from "./components/RomerAppShell";
+import { RomerDashboard } from "./components/RomerDashboard";
+
 export default function App() {
   const [view, setView] = useState<View>("operations");
   const [dialog, setDialog] = useState(false);
@@ -1794,6 +1808,7 @@ export default function App() {
     else if (path.includes("agent")) setView("agents");
     else if (path.includes("attack")) setView("attack_lab");
     else if (path.includes("ide") || path.includes("mcp")) setView("ide");
+    else if (path.includes("map") || path.includes("graph")) setView("live_map");
   }, []);
 
   const handleSetView = useCallback((nextView: View) => {
@@ -1805,6 +1820,8 @@ export default function App() {
         ? "/attacks"
         : nextView === "ide"
         ? "/ide"
+        : nextView === "live_map"
+        ? "/map"
         : `/${nextView}`;
     if (window.location.pathname !== target) {
       window.history.pushState(null, "", target);
@@ -1924,7 +1941,7 @@ export default function App() {
   };
 
   return (
-    <AppShell
+    <RomerAppShell
       view={view}
       setView={handleSetView}
       health={health}
@@ -1933,7 +1950,7 @@ export default function App() {
       onRefresh={loadData}
     >
       {view === "operations" && (
-        <OperationsView
+        <RomerDashboard
           go={handleSetView}
           agents={mergedAgents}
           runtimeEventsList={mergedRuntimeEvents}
@@ -1974,6 +1991,9 @@ export default function App() {
       {view === "ide" && (
         <IDEIntegration go={handleSetView} />
       )}
+      {view === "live_map" && (
+        <LiveMap go={handleSetView} />
+      )}
 
       {dialog && selectedAgentForRelease && (
         <ConfirmDialog
@@ -1982,6 +2002,6 @@ export default function App() {
           onConfirm={handleReleaseQuarantine}
         />
       )}
-    </AppShell>
+    </RomerAppShell>
   );
 }

@@ -180,4 +180,60 @@ export interface AnomalyDetectResponse {
   anomalies: DetectedAnomaly[];
 }
 
+// ---------------------------------------------------------------------------
+// Graph Topology Types — Live Map
+// ---------------------------------------------------------------------------
 
+export interface GraphNode {
+  id: string;
+  name: string;
+  role: string;
+  status: string;
+  trust_score: number;
+  trust_tier: string;
+  taint_label: string;
+  capabilities: string[];
+  recent_decisions: GraphDecision[];
+  event_count: number;
+  last_action?: string | null;
+  last_event_time?: string | null;
+  is_quarantined: boolean;
+}
+
+export interface GraphDecision {
+  action: string;
+  decision: string;
+  risk_level: string;
+  event_type: string;
+}
+
+export interface GraphEdge {
+  source: string;
+  target: string;
+  label: string;
+  edge_type: 'delegation' | 'taint_propagation' | 'communication' | 'enforcement' | string;
+  severity: 'normal' | 'warning' | 'critical' | string;
+  event_count: number;
+  last_event_time?: string | null;
+  metadata: Record<string, any>;
+}
+
+export interface GraphStats {
+  total_agents: number;
+  active_agents: number;
+  quarantined_agents: number;
+  total_events: number;
+  total_edges: number;
+  blocked_actions: number;
+  allowed_actions: number;
+  tainted_agents: number;
+  average_trust: number;
+  last_updated: string;
+}
+
+export interface GraphTopology {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  stats: GraphStats;
+  sentinel_node: GraphNode;
+}

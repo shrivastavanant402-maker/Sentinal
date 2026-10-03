@@ -1,0 +1,690 @@
+/* ============================================================================
+   ROMER COMMAND DASHBOARD — Faithful Stitch design implementation
+   All styles scoped to .romer-* classes to avoid conflicts with existing CSS
+   ============================================================================ */
+
+/* ---------- Romer Design Tokens ---------- */
+.romer-root {
+  --rm-bg: #131314;
+  --rm-surface-lowest: #0e0e0f;
+  --rm-surface-low: #1c1b1d;
+  --rm-surface-container: #201f21;
+  --rm-surface-high: #2a2a2b;
+  --rm-surface-highest: #353436;
+  --rm-on-surface: #e5e2e3;
+  --rm-on-surface-variant: #c6c5d8;
+  --rm-on-bg: #e5e2e3;
+  --rm-outline: #8f8fa1;
+  --rm-outline-variant: #454655;
+  --rm-secondary: #50d8e9;
+  --rm-primary-container: #7a85ff;
+  --rm-primary-accent: #5E6BFF;
+  --rm-error: #ffb4ab;
+  --rm-error-container: #93000a;
+  --rm-muted: #9A9DA3;
+  --rm-card-bg: #101112;
+  --rm-card-border: #1B1C1E;
+  --rm-panel-bg: #151617;
+  --rm-panel-border: #232426;
+  --rm-sunken: #070708;
+  --rm-raised: #191A1C;
+  --rm-sidebar-w: 256px;
+}
+
+/* ---------- Root / Body overrides when inside romer-root ---------- */
+.romer-root {
+  background-color: var(--rm-bg);
+  color: var(--rm-on-bg);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+/* ---------- Material Symbols icon sizing ---------- */
+.romer-root .material-symbols-outlined {
+  font-size: 20px;
+  font-variation-settings: 'FILL' 0, 'wght' 400;
+}
+
+/* ---------- SIDEBAR ---------- */
+.romer-sidebar {
+  display: none;
+  flex-direction: column;
+  width: var(--rm-sidebar-w);
+  height: 100vh;
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  padding: 16px 0 24px;
+  background: var(--rm-surface-lowest);
+  border-right: 1px solid var(--rm-outline-variant);
+  overflow-y: auto;
+}
+@media (min-width: 768px) {
+  .romer-sidebar { display: flex; }
+}
+
+.romer-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px;
+  margin-bottom: 24px;
+}
+.romer-sidebar-brand .material-symbols-outlined {
+  color: var(--rm-secondary);
+  font-variation-settings: 'FILL' 1;
+}
+.romer-sidebar-brand h1 {
+  font-family: 'Manrope', sans-serif;
+  font-size: 18px;
+  font-weight: 520;
+  line-height: 1.4;
+  letter-spacing: -0.02em;
+  color: var(--rm-on-surface);
+  margin: 0;
+}
+.romer-sidebar-brand p {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--rm-on-surface-variant);
+  margin: 0;
+}
+
+/* --- Nav list --- */
+.romer-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 8px;
+}
+
+.romer-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  border-right: 2px solid transparent;
+}
+.romer-nav-item:hover {
+  color: var(--rm-on-surface);
+  background: var(--rm-surface-high);
+}
+.romer-nav-item.active {
+  color: var(--rm-secondary);
+  background: var(--rm-surface-low);
+  border-right-color: var(--rm-secondary);
+}
+.romer-nav-item .material-symbols-outlined {
+  font-size: 20px;
+}
+.romer-nav-badge {
+  margin-left: auto;
+  background: var(--rm-error);
+  color: #690005;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+/* --- Sidebar footer --- */
+.romer-sidebar-footer {
+  padding: 0 16px;
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.romer-btn-primary {
+  background: var(--rm-primary-accent);
+  color: #F0F1F2;
+  border: none;
+  border-radius: 2px;
+  padding: 8px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s;
+}
+.romer-btn-primary:hover { background: #4a54cc; }
+
+.romer-sidebar-links {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.romer-sidebar-links a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.romer-sidebar-links a:hover { color: var(--rm-on-surface); }
+
+.romer-sidebar-user {
+  margin-top: 16px;
+  border-top: 1px solid var(--rm-outline-variant);
+  padding-top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.romer-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--rm-outline-variant);
+  background: var(--rm-surface-high);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--rm-on-surface);
+}
+.romer-sidebar-user-info {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--rm-on-surface);
+}
+
+/* ---------- MOBILE HEADER ---------- */
+.romer-mobile-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 48px;
+  padding: 0 16px;
+  width: 100%;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(19, 19, 20, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--rm-outline-variant);
+}
+@media (min-width: 768px) {
+  .romer-mobile-header { display: none; }
+}
+.romer-mobile-header-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  font-weight: 520;
+  letter-spacing: -0.04em;
+  color: var(--rm-on-bg);
+}
+.romer-mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--rm-on-surface-variant);
+}
+.romer-mobile-actions .material-symbols-outlined {
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.romer-mobile-actions .material-symbols-outlined:hover {
+  color: var(--rm-on-surface);
+}
+.romer-mobile-ws-btn {
+  background: var(--rm-surface-container);
+  border: 1px solid var(--rm-outline-variant);
+  color: var(--rm-on-surface);
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ---------- MAIN CONTENT ---------- */
+.romer-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--rm-bg);
+}
+@media (min-width: 768px) {
+  .romer-main { margin-left: var(--rm-sidebar-w); }
+}
+
+.romer-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+/* ---------- PAGE HEADER ---------- */
+.romer-page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.romer-page-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 48px;
+  font-weight: 520;
+  line-height: 1.1;
+  letter-spacing: -0.05em;
+  color: var(--rm-on-surface);
+  margin: 0;
+}
+.romer-page-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--rm-on-surface-variant);
+  margin: 0;
+}
+
+/* ---------- METRICS ROW ---------- */
+.romer-metrics-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+@media (min-width: 768px) {
+  .romer-metrics-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ---------- METRIC CARD ---------- */
+.romer-metric-card {
+  background: var(--rm-card-bg);
+  border: 1px solid var(--rm-card-border);
+  border-radius: 2px;
+  padding: 16px;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+.romer-metric-dot {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+.romer-metric-dot.ok { background: var(--rm-secondary); }
+.romer-metric-dot.error { background: var(--rm-error); }
+
+.romer-metric-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+  margin-bottom: 8px;
+}
+.romer-metric-value {
+  font-family: 'Manrope', sans-serif;
+  font-size: 32px;
+  font-weight: 520;
+  line-height: 1.2;
+  letter-spacing: -0.05em;
+  color: var(--rm-on-surface);
+}
+.romer-metric-detail {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--rm-muted);
+  margin-top: 4px;
+}
+.romer-metric-detail.error-text { color: var(--rm-error); }
+
+/* ---------- CENTRAL GRID ---------- */
+.romer-central-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  flex: 1;
+  min-height: 0;
+}
+@media (min-width: 1024px) {
+  .romer-central-grid { grid-template-columns: 2fr 1fr; }
+}
+
+/* ---------- TELEMETRY GRAPH ---------- */
+.romer-telemetry {
+  background: var(--rm-panel-bg);
+  border: 1px solid var(--rm-panel-border);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  min-height: 300px;
+}
+.romer-panel-header {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rm-card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--rm-card-bg);
+}
+.romer-panel-title {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.romer-panel-title .material-symbols-outlined { font-size: 16px; }
+
+/* --- Segmented control --- */
+.romer-segmented {
+  display: flex;
+  background: var(--rm-sunken);
+  border-radius: 2px;
+  padding: 2px;
+  border: 1px solid var(--rm-card-border);
+}
+.romer-seg-btn {
+  padding: 4px 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+  background: none;
+  border: none;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.15s;
+}
+.romer-seg-btn:hover { color: var(--rm-on-surface); }
+.romer-seg-btn.active {
+  background: var(--rm-raised);
+  color: var(--rm-on-surface);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* --- Graph area --- */
+.romer-graph-area {
+  flex: 1;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  /* Grid background */
+  background-image:
+    linear-gradient(to right, var(--rm-card-border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--rm-card-border) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.romer-graph-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0.2;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 50%, rgba(94, 107, 255, 0.2) 0%, transparent 70%);
+}
+.romer-graph-y-axis {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--rm-outline-variant);
+}
+.romer-graph-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  margin-left: 24px;
+  margin-top: 16px;
+}
+.romer-graph-canvas svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.romer-graph-x-axis {
+  width: 100%;
+  border-top: 1px solid var(--rm-card-border);
+  margin-top: 8px;
+  padding-top: 4px;
+  display: flex;
+  justify-content: space-between;
+  margin-left: 24px;
+  padding-right: 24px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--rm-outline-variant);
+}
+
+/* ---------- SIGNAL STATUS LIST ---------- */
+.romer-signal-panel {
+  background: var(--rm-card-bg);
+  border: 1px solid var(--rm-panel-border);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.romer-signal-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.romer-signal-item {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--rm-card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.romer-signal-item:hover { background: var(--rm-panel-bg); }
+.romer-signal-item.degraded { background: rgba(147, 0, 10, 0.1); }
+
+.romer-signal-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.romer-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.romer-status-dot.ok { background: var(--rm-secondary); }
+.romer-status-dot.error { background: var(--rm-error); }
+.romer-status-dot.muted { background: var(--rm-outline-variant); }
+
+.romer-signal-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--rm-on-surface);
+}
+.romer-signal-name.error-text { color: var(--rm-error); }
+
+.romer-signal-status {
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  color: var(--rm-on-surface-variant);
+  transition: color 0.15s;
+}
+.romer-signal-item:hover .romer-signal-status { color: var(--rm-primary-accent); }
+.romer-signal-status.error-text { color: var(--rm-error); }
+.romer-signal-item:hover .romer-signal-status.error-text { color: var(--rm-error); }
+
+/* ---------- BOTTOM ROW ---------- */
+.romer-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+  height: 256px;
+}
+@media (min-width: 1024px) {
+  .romer-bottom-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* --- Panel generic (for approvals + decision log) --- */
+.romer-data-panel {
+  background: var(--rm-card-bg);
+  border: 1px solid var(--rm-panel-border);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.romer-panel-action-btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--rm-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.romer-panel-action-btn:hover { color: var(--rm-on-surface); }
+
+/* --- Approvals table --- */
+.romer-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+.romer-table thead tr {
+  border-bottom: 1px solid var(--rm-card-border);
+  background: var(--rm-panel-bg);
+}
+.romer-table th {
+  padding: 4px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--rm-outline-variant);
+}
+.romer-table tbody tr {
+  border-bottom: 1px solid var(--rm-card-border);
+  height: 32px;
+  transition: background 0.15s;
+}
+.romer-table tbody tr:hover { background: var(--rm-panel-bg); }
+.romer-table td {
+  padding: 4px 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+}
+.romer-table td.mono {
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: var(--rm-on-surface);
+}
+.romer-table td.variant {
+  color: var(--rm-on-surface-variant);
+}
+.romer-status-badge {
+  display: inline-block;
+  padding: 2px 4px;
+  background: var(--rm-surface-high);
+  border: 1px solid var(--rm-outline-variant);
+  border-radius: 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: var(--rm-on-surface-variant);
+}
+
+/* --- Decision log --- */
+.romer-log-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.romer-log-entry {
+  display: flex;
+  gap: 8px;
+}
+.romer-log-icon {
+  margin-top: 4px;
+  color: var(--rm-outline-variant);
+}
+.romer-log-icon .material-symbols-outlined { font-size: 14px; }
+.romer-log-icon.error-text { color: var(--rm-error); }
+
+.romer-log-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: var(--rm-on-surface);
+}
+.romer-log-text.error-text { color: var(--rm-error); }
+.romer-log-meta {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: var(--rm-muted);
+}
