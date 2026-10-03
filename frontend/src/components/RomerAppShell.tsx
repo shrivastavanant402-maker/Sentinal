@@ -20,6 +20,7 @@ export function RomerAppShell({
   alertCount,
   isRefreshing,
   onRefresh,
+  onNavClick,
   children,
 }: {
   view: View;
@@ -28,6 +29,7 @@ export function RomerAppShell({
   alertCount: number;
   isRefreshing: boolean;
   onRefresh: () => void;
+  onNavClick?: (v: View) => void;
   children: ReactNode;
 }) {
   const isHealthy = health?.status === "healthy" || health?.status === "ok";
@@ -51,7 +53,7 @@ export function RomerAppShell({
             <button
               key={item.id}
               className={`romer-nav-item${view === item.id ? " active" : ""}`}
-              onClick={() => setView(item.id)}
+              onClick={() => (onNavClick ? onNavClick(item.id) : setView(item.id))}
             >
               <span className="material-symbols-outlined">{item.icon}</span>
               {item.label}

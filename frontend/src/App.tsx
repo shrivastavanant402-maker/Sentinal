@@ -305,7 +305,7 @@ const navItems: { id: View; label: string; icon: IconName; count?: number }[] = 
   { id: "live_map", label: "Live Map", icon: "network" },
 ];
 
-function AppShell({
+export function AppShell({
   view,
   setView,
   health,
@@ -537,7 +537,7 @@ function EventTable({
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. OPERATIONS VIEW
 // ─────────────────────────────────────────────────────────────────────────────
-function OperationsView({
+export function OperationsView({
   go,
   agents,
   runtimeEventsList,
