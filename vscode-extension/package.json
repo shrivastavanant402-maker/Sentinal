@@ -1,22 +1,40 @@
 {
   "name": "aegismesh-vscode",
   "displayName": "AegisMesh IDE Sentinel",
-  "description": "VS Code integration foundation and security adapter for AegisMesh Runtime Integrity Core",
+  "description": "Zero-trust runtime policy enforcement and cryptographic integrity for AI agents in VS Code",
   "version": "0.1.0",
   "publisher": "aegismesh",
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#0a0e1a",
+    "theme": "dark"
+  },
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shrivastavanant402-maker/Sentinal"
+  },
+  "bugs": {
+    "url": "https://github.com/shrivastavanant402-maker/Sentinal/issues"
+  },
+  "homepage": "https://github.com/shrivastavanant402-maker/Sentinal#readme",
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
     "Security",
+    "Linters",
     "Programming Languages"
   ],
   "keywords": [
     "aegismesh",
     "security",
-    "soc",
+    "zero-trust",
     "runtime integrity",
-    "ai agent"
+    "ai agent",
+    "policy enforcement",
+    "audit ledger",
+    "mcp"
   ],
   "activationEvents": [
     "onStartupFinished"
