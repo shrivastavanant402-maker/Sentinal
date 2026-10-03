@@ -13,7 +13,7 @@ import {
   GraphTopology,
 } from '../types';
 
-const API_BASE = '';
+const API_BASE = (import.meta as any).env?.VITE_API_BASE_URL || '';
 
 async function handleResponse<T>(res: Response, fallbackError: string): Promise<T> {
   if (!res.ok) {
