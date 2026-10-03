@@ -1,690 +1,722 @@
 /* ============================================================================
-   ROMER COMMAND DASHBOARD — Faithful Stitch design implementation
-   All styles scoped to .romer-* classes to avoid conflicts with existing CSS
+   ROMER EXECUTIVE COMMAND SUITE — Pure White & Monochrome Theme
+   Designed to match Romer executive landing & command dashboard reference
+   Eliminates all neon blue/cyan; uses crisp white, deep matte black & charcoal
    ============================================================================ */
 
-/* ---------- Romer Design Tokens ---------- */
-.romer-root {
-  --rm-bg: #131314;
-  --rm-surface-lowest: #0e0e0f;
-  --rm-surface-low: #1c1b1d;
-  --rm-surface-container: #201f21;
-  --rm-surface-high: #2a2a2b;
-  --rm-surface-highest: #353436;
-  --rm-on-surface: #e5e2e3;
-  --rm-on-surface-variant: #c6c5d8;
-  --rm-on-bg: #e5e2e3;
-  --rm-outline: #8f8fa1;
-  --rm-outline-variant: #454655;
-  --rm-secondary: #50d8e9;
-  --rm-primary-container: #7a85ff;
-  --rm-primary-accent: #5E6BFF;
-  --rm-error: #ffb4ab;
-  --rm-error-container: #93000a;
-  --rm-muted: #9A9DA3;
-  --rm-card-bg: #101112;
-  --rm-card-border: #1B1C1E;
-  --rm-panel-bg: #151617;
-  --rm-panel-border: #232426;
-  --rm-sunken: #070708;
-  --rm-raised: #191A1C;
-  --rm-sidebar-w: 256px;
-}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@500;600;700;800&display=swap');
 
-/* ---------- Root / Body overrides when inside romer-root ---------- */
+/* ---------- Pure White & Deep Charcoal Design Tokens ---------- */
 .romer-root {
-  background-color: var(--rm-bg);
-  color: var(--rm-on-bg);
-  font-family: 'Inter', sans-serif;
+  --rm-canvas: #050506;
+  --rm-bg: #09090b;
+  --rm-surface: #101013;
+  --rm-surface-card: #141418;
+  --rm-surface-card-alt: #18181d;
+  --rm-surface-hover: #1e1e24;
+  --rm-surface-active: #22222a;
+  
+  --rm-border: #222227;
+  --rm-border-light: rgba(255, 255, 255, 0.1);
+  --rm-border-active: rgba(255, 255, 255, 0.28);
+  --rm-border-subtle: #19191d;
+
+  --rm-text-primary: #FFFFFF;
+  --rm-text-secondary: #9DA1A8;
+  --rm-text-muted: #62626C;
+
+  /* Primary white accent */
+  --rm-btn-white-bg: #FFFFFF;
+  --rm-btn-white-text: #000000;
+  
+  /* Status indicators */
+  --rm-status-live: #22c55e;
+  --rm-status-warn: #f59e0b;
+  --rm-status-danger: #ef4444;
+
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: var(--rm-text-primary);
+  background-color: var(--rm-canvas);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 28px 28px;
   min-height: 100vh;
   display: flex;
-  flex-direction: row;
-  overflow: hidden;
+  flex-direction: column;
+  box-sizing: border-box;
 }
 
-/* ---------- Material Symbols icon sizing ---------- */
+.romer-root *, .romer-root *::before, .romer-root *::after {
+  box-sizing: border-box;
+}
+
+/* Material Symbols icon sizing */
 .romer-root .material-symbols-outlined {
-  font-size: 20px;
+  font-size: 19px;
   font-variation-settings: 'FILL' 0, 'wght' 400;
+  vertical-align: middle;
 }
 
-/* ---------- SIDEBAR ---------- */
-.romer-sidebar {
-  display: none;
-  flex-direction: column;
-  width: var(--rm-sidebar-w);
-  height: 100vh;
-  position: fixed;
-  left: 0;
-  top: 0;
-  z-index: 40;
-  padding: 16px 0 24px;
-  background: var(--rm-surface-lowest);
-  border-right: 1px solid var(--rm-outline-variant);
-  overflow-y: auto;
-}
-@media (min-width: 768px) {
-  .romer-sidebar { display: flex; }
-}
-
-.romer-sidebar-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 16px;
-  margin-bottom: 24px;
-}
-.romer-sidebar-brand .material-symbols-outlined {
-  color: var(--rm-secondary);
-  font-variation-settings: 'FILL' 1;
-}
-.romer-sidebar-brand h1 {
-  font-family: 'Manrope', sans-serif;
-  font-size: 18px;
-  font-weight: 520;
-  line-height: 1.4;
-  letter-spacing: -0.02em;
-  color: var(--rm-on-surface);
-  margin: 0;
-}
-.romer-sidebar-brand p {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--rm-on-surface-variant);
-  margin: 0;
-}
-
-/* --- Nav list --- */
-.romer-nav {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 0 8px;
-}
-
-.romer-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  text-decoration: none;
-  border: none;
-  background: none;
-  width: 100%;
-  text-align: left;
-  border-right: 2px solid transparent;
-}
-.romer-nav-item:hover {
-  color: var(--rm-on-surface);
-  background: var(--rm-surface-high);
-}
-.romer-nav-item.active {
-  color: var(--rm-secondary);
-  background: var(--rm-surface-low);
-  border-right-color: var(--rm-secondary);
-}
-.romer-nav-item .material-symbols-outlined {
-  font-size: 20px;
-}
-.romer-nav-badge {
-  margin-left: auto;
-  background: var(--rm-error);
-  color: #690005;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 9999px;
-  font-weight: 600;
-}
-
-/* --- Sidebar footer --- */
-.romer-sidebar-footer {
-  padding: 0 16px;
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.romer-btn-primary {
-  background: var(--rm-primary-accent);
-  color: #F0F1F2;
-  border: none;
-  border-radius: 2px;
-  padding: 8px 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: background 0.15s;
-}
-.romer-btn-primary:hover { background: #4a54cc; }
-
-.romer-sidebar-links {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-top: 8px;
-}
-.romer-sidebar-links a {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
-  text-decoration: none;
-  transition: color 0.15s;
-}
-.romer-sidebar-links a:hover { color: var(--rm-on-surface); }
-
-.romer-sidebar-user {
-  margin-top: 16px;
-  border-top: 1px solid var(--rm-outline-variant);
-  padding-top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.romer-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: 1px solid var(--rm-outline-variant);
-  background: var(--rm-surface-high);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--rm-on-surface);
-}
-.romer-sidebar-user-info {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--rm-on-surface);
-}
-
-/* ---------- MOBILE HEADER ---------- */
-.romer-mobile-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  height: 48px;
-  padding: 0 16px;
-  width: 100%;
+/* ============================================================================
+   TOP APP BAR (HEADER)
+   ============================================================================ */
+.romer-topbar {
   position: sticky;
   top: 0;
-  z-index: 30;
-  background: rgba(19, 19, 20, 0.8);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--rm-outline-variant);
+  z-index: 100;
+  height: 68px;
+  background: rgba(9, 9, 11, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--rm-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  width: 100%;
 }
-@media (min-width: 768px) {
-  .romer-mobile-header { display: none; }
+
+.romer-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
-.romer-mobile-header-title {
+
+.romer-brand-badge {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: #151518;
+  color: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-family: 'Manrope', sans-serif;
-  font-size: 24px;
-  font-weight: 520;
-  letter-spacing: -0.04em;
-  color: var(--rm-on-bg);
+  font-weight: 700;
+  font-size: 14px;
 }
-.romer-mobile-actions {
+
+.romer-brand-name {
+  font-family: 'Manrope', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: -0.03em;
+}
+
+.romer-topbar-nav {
+  display: none;
+  align-items: center;
+  gap: 28px;
+}
+@media (min-width: 900px) {
+  .romer-topbar-nav { display: flex; }
+}
+
+.romer-topbar-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--rm-text-secondary);
+  text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  position: relative;
+  transition: color 0.15s ease;
+}
+.romer-topbar-link:hover {
+  color: #FFFFFF;
+}
+.romer-topbar-link.active {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+.romer-topbar-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #FFFFFF;
+  border-radius: 1px;
+}
+
+.romer-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.romer-btn-ghost {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.romer-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.romer-btn-white {
+  background: #FFFFFF;
+  color: #000000;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: opacity 0.15s ease, transform 0.1s ease;
+  text-decoration: none;
+}
+.romer-btn-white:hover {
+  opacity: 0.92;
+}
+.romer-btn-white:active {
+  transform: scale(0.98);
+}
+
+.romer-btn-dark {
+  background: #16161a;
+  border: 1px solid var(--rm-border);
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.romer-btn-dark:hover {
+  background: #202026;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ============================================================================
+   MAIN CONTAINER
+   ============================================================================ */
+.romer-container {
+  max-width: 1540px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 28px 64px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* ============================================================================
+   HERO BANNER
+   ============================================================================ */
+.romer-hero {
+  padding: 48px 0 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+}
+
+.romer-hero-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: clamp(34px, 4.5vw, 56px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+  margin: 0 0 16px 0;
+  max-width: 820px;
+}
+
+.romer-hero-subtitle {
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--rm-text-secondary);
+  margin: 0 0 28px 0;
+  max-width: 620px;
+}
+
+.romer-hero-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.romer-hero-ctas {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.romer-hero-link {
+  font-size: 13px;
+  color: var(--rm-text-muted);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.15s ease;
+}
+.romer-hero-link:hover {
+  color: #FFFFFF;
+}
+
+/* ============================================================================
+   FRAMED COMMAND DASHBOARD WINDOW
+   ============================================================================ */
+.romer-window-frame {
+  background: #0d0d10;
+  border: 1px solid var(--rm-border);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-top: 8px;
+  min-height: 720px;
+}
+
+.romer-dashboard-layout {
+  display: grid;
+  grid-template-columns: 210px minmax(0, 1fr) 310px;
+  min-height: 720px;
+  background: #0c0c0e;
+}
+@media (max-width: 1200px) {
+  .romer-dashboard-layout {
+    grid-template-columns: 200px minmax(0, 1fr);
+  }
+  .romer-intel-column {
+    display: none;
+  }
+}
+@media (max-width: 860px) {
+  .romer-dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+  .romer-window-nav {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   COLUMN 1: NAVIGATION SIDEBAR (Inside Frame)
+   ============================================================================ */
+.romer-window-nav {
+  background: #0a0a0c;
+  border-right: 1px solid var(--rm-border);
+  padding: 24px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.romer-nav-heading {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--rm-text-muted);
+  padding: 0 12px 10px;
+}
+
+.romer-nav-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rm-text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+.romer-nav-pill:hover {
+  color: #FFFFFF;
+  background: rgba(255, 255, 255, 0.04);
+}
+.romer-nav-pill.active {
+  background: #18181c;
+  border: 1px solid var(--rm-border-active);
+  color: #FFFFFF;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+.romer-nav-pill .material-symbols-outlined {
+  font-size: 18px;
+  color: inherit;
+}
+.romer-nav-pill-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #ffb4ab;
+}
+
+/* ============================================================================
+   COLUMN 2: CENTER WORKSPACE
+   ============================================================================ */
+.romer-center-column {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: #0d0d0f;
+  overflow-y: auto;
+}
+
+/* Status row */
+.romer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 4px;
+}
+
+.romer-live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+}
+
+.romer-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--rm-status-live);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.romer-last-updated {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rm-text-muted);
+}
+
+/* 6 Metrics Grid (2 x 3) */
+.romer-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+@media (max-width: 900px) {
+  .romer-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .romer-metrics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.romer-white-card {
+  background: var(--rm-surface-card);
+  border: 1px solid var(--rm-border);
+  border-radius: 8px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 104px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.romer-white-card:hover {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--rm-surface-card-alt);
+}
+
+.romer-card-header {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rm-text-muted);
+  margin-bottom: 6px;
+}
+
+.romer-card-number {
+  font-family: 'Manrope', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  color: #FFFFFF;
+}
+
+.romer-card-footer {
+  font-size: 12px;
+  color: var(--rm-text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+}
+.romer-card-footer.positive {
+  color: #FFFFFF;
+}
+
+/* Sparkline bar indicator */
+.romer-sparkline {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.romer-spark-bar {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 1px;
+}
+.romer-spark-bar.tall {
+  background: #FFFFFF;
+  height: 12px;
+}
+
+/* Signal Flow telemetry section */
+.romer-chart-card {
+  background: var(--rm-surface-card);
+  border: 1px solid var(--rm-border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 260px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.romer-chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+}
+
+.romer-chart-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.romer-chart-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+}
+
+.romer-chart-latency {
+  font-size: 11px;
+  color: var(--rm-text-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.romer-chart-legend {
   display: flex;
   align-items: center;
   gap: 16px;
-  color: var(--rm-on-surface-variant);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--rm-text-muted);
 }
-.romer-mobile-actions .material-symbols-outlined {
-  cursor: pointer;
-  transition: color 0.15s;
+.romer-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
-.romer-mobile-actions .material-symbols-outlined:hover {
-  color: var(--rm-on-surface);
+.romer-legend-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
 }
-.romer-mobile-ws-btn {
-  background: var(--rm-surface-container);
-  border: 1px solid var(--rm-outline-variant);
-  color: var(--rm-on-surface);
-  padding: 4px 8px;
-  border-radius: 2px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
+.romer-legend-dot.revenue { background: #FFFFFF; }
+.romer-legend-dot.goal { background: rgba(255, 255, 255, 0.3); }
+
+.romer-chart-canvas-area {
+  background: #08080a;
+  border: 1px solid var(--rm-border-subtle);
+  border-radius: 6px;
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 180px;
 }
 
-/* ---------- MAIN CONTENT ---------- */
-.romer-main {
-  flex: 1;
+.romer-chart-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 32px 32px;
+  pointer-events: none;
+}
+
+.romer-chart-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================================================
+   COLUMN 3: ROMER INTELLIGENCE (Right Sidebar)
+   ============================================================================ */
+.romer-intel-column {
+  background: #0a0a0c;
+  border-left: 1px solid var(--rm-border);
+  padding: 24px 18px;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  gap: 18px;
   overflow-y: auto;
-  overflow-x: hidden;
-  background: var(--rm-bg);
-}
-@media (min-width: 768px) {
-  .romer-main { margin-left: var(--rm-sidebar-w); }
 }
 
-.romer-content {
-  padding: 20px;
+.romer-intel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #FFFFFF;
+}
+.romer-intel-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.romer-intel-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #FFFFFF;
+}
+
+.romer-intel-box {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  flex: 1;
+  gap: 8px;
 }
 
-/* ---------- PAGE HEADER ---------- */
-.romer-page-header {
+.romer-intel-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--rm-text-muted);
+}
+
+.romer-intel-card {
+  background: #131317;
+  border: 1px solid var(--rm-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--rm-text-secondary);
+}
+
+.romer-intel-highlight {
+  color: #FFFFFF;
+  font-weight: 600;
+}
+
+/* Decision Log inside Romer Intelligence */
+.romer-decision-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.romer-decision-item {
+  background: #111114;
+  border: 1px solid var(--rm-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 8px;
 }
-.romer-page-title {
-  font-family: 'Manrope', sans-serif;
-  font-size: 48px;
-  font-weight: 520;
-  line-height: 1.1;
-  letter-spacing: -0.05em;
-  color: var(--rm-on-surface);
-  margin: 0;
-}
-.romer-page-subtitle {
-  font-family: 'Inter', sans-serif;
-  font-size: 16px;
-  font-weight: 400;
-  line-height: 1.6;
-  color: var(--rm-on-surface-variant);
-  margin: 0;
-}
-
-/* ---------- METRICS ROW ---------- */
-.romer-metrics-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-}
-@media (min-width: 768px) {
-  .romer-metrics-row { grid-template-columns: repeat(3, 1fr); }
-}
-
-/* ---------- METRIC CARD ---------- */
-.romer-metric-card {
-  background: var(--rm-card-bg);
-  border: 1px solid var(--rm-card-border);
-  border-radius: 2px;
-  padding: 16px;
-  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
-  position: relative;
-  overflow: hidden;
-}
-.romer-metric-dot {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-}
-.romer-metric-dot.ok { background: var(--rm-secondary); }
-.romer-metric-dot.error { background: var(--rm-error); }
-
-.romer-metric-label {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
-  margin-bottom: 8px;
-}
-.romer-metric-value {
-  font-family: 'Manrope', sans-serif;
-  font-size: 32px;
-  font-weight: 520;
-  line-height: 1.2;
-  letter-spacing: -0.05em;
-  color: var(--rm-on-surface);
-}
-.romer-metric-detail {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--rm-muted);
-  margin-top: 4px;
-}
-.romer-metric-detail.error-text { color: var(--rm-error); }
-
-/* ---------- CENTRAL GRID ---------- */
-.romer-central-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-  flex: 1;
-  min-height: 0;
-}
-@media (min-width: 1024px) {
-  .romer-central-grid { grid-template-columns: 2fr 1fr; }
-}
-
-/* ---------- TELEMETRY GRAPH ---------- */
-.romer-telemetry {
-  background: var(--rm-panel-bg);
-  border: 1px solid var(--rm-panel-border);
-  border-radius: 2px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  position: relative;
-  min-height: 300px;
-}
-.romer-panel-header {
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--rm-card-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--rm-card-bg);
-}
-.romer-panel-title {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
+.romer-decision-top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
 }
-.romer-panel-title .material-symbols-outlined { font-size: 16px; }
-
-/* --- Segmented control --- */
-.romer-segmented {
-  display: flex;
-  background: var(--rm-sunken);
-  border-radius: 2px;
-  padding: 2px;
-  border: 1px solid var(--rm-card-border);
-}
-.romer-seg-btn {
-  padding: 4px 8px;
-  font-family: 'Inter', sans-serif;
+.romer-decision-badge {
   font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
-  background: none;
-  border: none;
-  cursor: pointer;
-  border-radius: 2px;
-  transition: all 0.15s;
 }
-.romer-seg-btn:hover { color: var(--rm-on-surface); }
-.romer-seg-btn.active {
-  background: var(--rm-raised);
-  color: var(--rm-on-surface);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+.romer-decision-badge.approved {
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
 }
-
-/* --- Graph area --- */
-.romer-graph-area {
-  flex: 1;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  /* Grid background */
-  background-image:
-    linear-gradient(to right, var(--rm-card-border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--rm-card-border) 1px, transparent 1px);
-  background-size: 40px 40px;
+.romer-decision-badge.blocked {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ffb4ab;
 }
-.romer-graph-glow {
-  position: absolute;
-  inset: 0;
-  opacity: 0.2;
-  pointer-events: none;
-  background: radial-gradient(circle at 50% 50%, rgba(94, 107, 255, 0.2) 0%, transparent 70%);
+.romer-decision-text {
+  color: var(--rm-text-secondary);
+  line-height: 1.35;
+  font-size: 11.5px;
 }
-.romer-graph-y-axis {
-  position: absolute;
-  left: 16px;
-  top: 16px;
-  bottom: 16px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  color: var(--rm-outline-variant);
-}
-.romer-graph-canvas {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  margin-left: 24px;
-  margin-top: 16px;
-}
-.romer-graph-canvas svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-.romer-graph-x-axis {
-  width: 100%;
-  border-top: 1px solid var(--rm-card-border);
-  margin-top: 8px;
-  padding-top: 4px;
-  display: flex;
-  justify-content: space-between;
-  margin-left: 24px;
-  padding-right: 24px;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  color: var(--rm-outline-variant);
+.romer-decision-meta {
+  color: var(--rm-text-muted);
+  font-size: 10.5px;
 }
 
-/* ---------- SIGNAL STATUS LIST ---------- */
-.romer-signal-panel {
-  background: var(--rm-card-bg);
-  border: 1px solid var(--rm-panel-border);
-  border-radius: 2px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.romer-signal-list {
+/* ============================================================================
+   SUBVIEW WRAPPER FOR OTHER SENTINAL PAGES
+   ============================================================================ */
+.romer-subview-content {
   flex: 1;
+  padding: 24px;
+  background: #0d0d0f;
   overflow-y: auto;
-}
-.romer-signal-item {
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--rm-card-border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.romer-signal-item:hover { background: var(--rm-panel-bg); }
-.romer-signal-item.degraded { background: rgba(147, 0, 10, 0.1); }
-
-.romer-signal-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.romer-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.romer-status-dot.ok { background: var(--rm-secondary); }
-.romer-status-dot.error { background: var(--rm-error); }
-.romer-status-dot.muted { background: var(--rm-outline-variant); }
-
-.romer-signal-name {
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
-  color: var(--rm-on-surface);
-}
-.romer-signal-name.error-text { color: var(--rm-error); }
-
-.romer-signal-status {
-  font-family: 'Inter', sans-serif;
-  font-size: 11px;
-  color: var(--rm-on-surface-variant);
-  transition: color 0.15s;
-}
-.romer-signal-item:hover .romer-signal-status { color: var(--rm-primary-accent); }
-.romer-signal-status.error-text { color: var(--rm-error); }
-.romer-signal-item:hover .romer-signal-status.error-text { color: var(--rm-error); }
-
-/* ---------- BOTTOM ROW ---------- */
-.romer-bottom-row {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 20px;
-  height: 256px;
-}
-@media (min-width: 1024px) {
-  .romer-bottom-row { grid-template-columns: 1fr 1fr; }
-}
-
-/* --- Panel generic (for approvals + decision log) --- */
-.romer-data-panel {
-  background: var(--rm-card-bg);
-  border: 1px solid var(--rm-panel-border);
-  border-radius: 2px;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.romer-panel-action-btn {
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  text-transform: uppercase;
-  color: var(--rm-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s;
-}
-.romer-panel-action-btn:hover { color: var(--rm-on-surface); }
-
-/* --- Approvals table --- */
-.romer-table {
-  width: 100%;
-  text-align: left;
-  border-collapse: collapse;
-}
-.romer-table thead tr {
-  border-bottom: 1px solid var(--rm-card-border);
-  background: var(--rm-panel-bg);
-}
-.romer-table th {
-  padding: 4px 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  font-weight: 500;
-  text-transform: uppercase;
-  color: var(--rm-outline-variant);
-}
-.romer-table tbody tr {
-  border-bottom: 1px solid var(--rm-card-border);
-  height: 32px;
-  transition: background 0.15s;
-}
-.romer-table tbody tr:hover { background: var(--rm-panel-bg); }
-.romer-table td {
-  padding: 4px 16px;
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-}
-.romer-table td.mono {
-  font-size: 12px;
-  letter-spacing: -0.01em;
-  color: var(--rm-on-surface);
-}
-.romer-table td.variant {
-  color: var(--rm-on-surface-variant);
-}
-.romer-status-badge {
-  display: inline-block;
-  padding: 2px 4px;
-  background: var(--rm-surface-high);
-  border: 1px solid var(--rm-outline-variant);
-  border-radius: 2px;
-  font-size: 10px;
-  text-transform: uppercase;
-  color: var(--rm-on-surface-variant);
-}
-
-/* --- Decision log --- */
-.romer-log-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.romer-log-entry {
-  display: flex;
-  gap: 8px;
-}
-.romer-log-icon {
-  margin-top: 4px;
-  color: var(--rm-outline-variant);
-}
-.romer-log-icon .material-symbols-outlined { font-size: 14px; }
-.romer-log-icon.error-text { color: var(--rm-error); }
-
-.romer-log-text {
-  font-family: 'Inter', sans-serif;
-  font-size: 12px;
-  letter-spacing: -0.01em;
-  color: var(--rm-on-surface);
-}
-.romer-log-text.error-text { color: var(--rm-error); }
-.romer-log-meta {
-  font-family: 'Inter', sans-serif;
-  font-size: 10px;
-  color: var(--rm-muted);
 }

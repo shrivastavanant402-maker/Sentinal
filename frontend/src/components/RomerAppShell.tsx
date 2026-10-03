@@ -1,16 +1,16 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import type { View } from "../types/figma";
 
-/* ───────── Nav items mapped to existing Sentinal views ───────── */
+/* ───────── Sidebar items inside the dashboard frame ───────── */
 const navItems: { id: View; label: string; icon: string }[] = [
-  { id: "operations", label: "Command", icon: "terminal" },
+  { id: "operations", label: "Overview", icon: "grid_view" },
   { id: "incident",   label: "Signals", icon: "sensors" },
-  { id: "ledger",     label: "Approvals", icon: "verified_user" },
-  { id: "agents",     label: "Agents", icon: "group" },
-  { id: "live_map",   label: "Live Map", icon: "monitoring" },
-  { id: "attack_lab", label: "Attack Lab", icon: "analytics" },
+  { id: "ledger",     label: "Approvals", icon: "check_circle" },
+  { id: "live_map",   label: "Metrics", icon: "bar_chart" },
+  { id: "attack_lab", label: "Risks", icon: "warning" },
+  { id: "agents",     label: "Teams", icon: "group" },
   { id: "replay",     label: "Reports", icon: "description" },
-  { id: "ide",        label: "IDE / MCP", icon: "code" },
+  { id: "ide",        label: "IDE / MCP", icon: "terminal" },
 ];
 
 export function RomerAppShell({
@@ -32,84 +32,145 @@ export function RomerAppShell({
   onNavClick?: (v: View) => void;
   children: ReactNode;
 }) {
+  const [activeTopTab, setActiveTopTab] = useState<string>("Platform");
   const isHealthy = health?.status === "healthy" || health?.status === "ok";
+
+  const handleNav = (v: View) => {
+    setView(v);
+    if (onNavClick) onNavClick(v);
+  };
 
   return (
     <div className="romer-root">
-      {/* ─── Desktop sidebar ─── */}
-      <nav className="romer-sidebar">
+      {/* ─── Top Navigation Bar ─── */}
+      <header className="romer-topbar">
         {/* Brand */}
-        <div className="romer-sidebar-brand">
-          <span className="material-symbols-outlined">terminal</span>
-          <div>
-            <h1>OPERATIONS</h1>
-            <p>v2.4.0-stable</p>
+        <div className="romer-topbar-left" style={{ cursor: "pointer" }} onClick={() => handleNav("operations")}>
+          <div className="romer-brand-badge">R</div>
+          <span className="romer-brand-name">Romer</span>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: "5px", marginLeft: "10px", fontSize: "11px", color: "var(--rm-text-muted)" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: isHealthy ? "#22c55e" : "#ef4444" }} />
+            <span>{isHealthy ? "ONLINE" : "OFFLINE"}</span>
           </div>
         </div>
 
-        {/* Navigation */}
-        <div className="romer-nav">
-          {navItems.map((item) => (
+        {/* Nav Links */}
+        <nav className="romer-topbar-nav">
+          {[
+            { label: "Platform", view: "operations" as View },
+            { label: "Dashboards", view: "operations" as View },
+            { label: "Customers", view: "agents" as View },
+            { label: "Pricing", view: "ledger" as View },
+            { label: "Resources", view: "replay" as View },
+            { label: "Contact", view: "ide" as View },
+          ].map((item) => (
             <button
-              key={item.id}
-              className={`romer-nav-item${view === item.id ? " active" : ""}`}
-              onClick={() => (onNavClick ? onNavClick(item.id) : setView(item.id))}
+              key={item.label}
+              type="button"
+              className={`romer-topbar-link${activeTopTab === item.label ? " active" : ""}`}
+              onClick={() => {
+                setActiveTopTab(item.label);
+                handleNav(item.view);
+              }}
             >
-              <span className="material-symbols-outlined">{item.icon}</span>
               {item.label}
-              {item.id === "incident" && alertCount > 0 && (
-                <span className="romer-nav-badge">{alertCount}</span>
-              )}
             </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Footer */}
-        <div className="romer-sidebar-footer">
+        {/* Actions */}
+        <div className="romer-topbar-actions">
           <button
-            className="romer-btn-primary"
+            type="button"
+            className="romer-btn-ghost"
             onClick={onRefresh}
-            disabled={isRefreshing}
+            title={isRefreshing ? "Refreshing..." : "Refresh data"}
           >
-            {isRefreshing ? "Syncing…" : "Launch Terminal"}
+            {isRefreshing ? "Syncing…" : "Log in"}
           </button>
+          <button
+            type="button"
+            className="romer-btn-white"
+            onClick={() => setView("operations")}
+          >
+            Start free
+          </button>
+        </div>
+      </header>
 
-          <div className="romer-sidebar-links">
-            <a href="#">
-              <span className="material-symbols-outlined">help</span> Docs
-            </a>
-            <a href="#">
-              <span className="material-symbols-outlined">contact_support</span> Support
-            </a>
-          </div>
+      {/* ─── Main Container ─── */}
+      <div className="romer-container">
+        {/* Hero Section */}
+        <section className="romer-hero">
+          <h1 className="romer-hero-title">
+            The command dashboard<br />for focused teams
+          </h1>
+          <p className="romer-hero-subtitle">
+            Romer turns scattered signals, approvals, and operating data into one calm dashboard for leadership teams.
+          </p>
 
-          <div className="romer-sidebar-user">
-            <div className="romer-avatar">
-              {isHealthy ? (
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#50d8e9", display: "block" }} />
-              ) : (
-                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#ffb4ab", display: "block" }} />
-              )}
+          <div className="romer-hero-row">
+            <div className="romer-hero-ctas">
+              <button
+                type="button"
+                className="romer-btn-white"
+                onClick={() => setView("operations")}
+              >
+                Get started
+              </button>
+              <button
+                type="button"
+                className="romer-btn-dark"
+                onClick={() => setView("live_map")}
+              >
+                Book a demo
+              </button>
             </div>
-            <span className="romer-sidebar-user-info">System Admin</span>
+
+            <button
+              type="button"
+              className="romer-hero-link"
+              onClick={onRefresh}
+              style={{ background: "none", border: "none", cursor: "pointer" }}
+            >
+              Live operating layer romer.app/overview &rarr;
+            </button>
+          </div>
+        </section>
+
+        {/* Framed Executive Command Center Window */}
+        <div className="romer-window-frame">
+          <div className="romer-dashboard-layout">
+            {/* Column 1: Navigation Sidebar inside frame */}
+            <aside className="romer-window-nav">
+              <div className="romer-nav-heading">NAVIGATION</div>
+              {navItems.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`romer-nav-pill${view === item.id ? " active" : ""}`}
+                  onClick={() => handleNav(item.id)}
+                >
+                  <span className="material-symbols-outlined">{item.icon}</span>
+                  <span>{item.label}</span>
+                  {item.id === "incident" && alertCount > 0 && (
+                    <span className="romer-nav-pill-badge">{alertCount}</span>
+                  )}
+                </button>
+              ))}
+            </aside>
+
+            {/* If Operations view, RomerDashboard provides Center + Intel columns */}
+            {view === "operations" ? (
+              children
+            ) : (
+              <div className="romer-subview-content" style={{ gridColumn: "span 2" }}>
+                {children}
+              </div>
+            )}
           </div>
         </div>
-      </nav>
-
-      {/* ─── Main area ─── */}
-      <main className="romer-main">
-        {/* Mobile header */}
-        <header className="romer-mobile-header">
-          <div className="romer-mobile-header-title">ROMER</div>
-          <div className="romer-mobile-actions">
-            <span className="material-symbols-outlined">notifications</span>
-            <span className="material-symbols-outlined">settings</span>
-            <button className="romer-mobile-ws-btn">Workspace</button>
-          </div>
-        </header>
-
-        {children}
-      </main>
+      </div>
     </div>
   );
 }
