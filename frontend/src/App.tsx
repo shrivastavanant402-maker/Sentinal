@@ -2,14 +2,11 @@ import { useEffect, useMemo, useState, useCallback, type ReactNode } from "react
 import {
   agents as seedAgents,
   mission as defaultMission,
-  replayEvents as seedReplayEvents,
-  runtimeEvents as seedRuntimeEvents,
 } from "./data";
 import type {
   FigmaAgent as Agent,
   FigmaDecision as Decision,
   RuntimeEvent,
-  ReplayEvent,
   View,
 } from "./types/figma";
 import type {
@@ -32,6 +29,8 @@ import {
 } from "./services/api";
 import { IDEIntegration } from "./pages/IDEIntegration";
 import { LiveMap } from "./pages/LiveMap";
+import { AttackReplay } from "./pages/AttackReplay";
+import { formatTimeIST, formatFullDateTimeIST } from "./utils/time";
 
 type IconName =
   | "activity"
@@ -244,11 +243,12 @@ function Select({
 function Status({ value }: { value: string }) {
   const normalized = value.toLowerCase();
   const tone =
-    normalized.includes("critical") ||
-    normalized.includes("block") ||
-    normalized.includes("quarantin") ||
-    normalized.includes("fail") ||
-    normalized.includes("halt")
+    normalized.includes("quarantin")
+      ? "quarantine"
+      : normalized.includes("critical") ||
+        normalized.includes("block") ||
+        normalized.includes("fail") ||
+        normalized.includes("halt")
       ? "critical"
       : normalized.includes("high") ||
         normalized.includes("require approval") ||
@@ -312,6 +312,7 @@ function AppShell({
   alertCount,
   isRefreshing,
   onRefresh,
+  onNavClick,
   children,
 }: {
   view: View;
@@ -320,6 +321,7 @@ function AppShell({
   alertCount: number;
   isRefreshing: boolean;
   onRefresh: () => void;
+  onNavClick?: (view: View) => void;
   children: ReactNode;
 }) {
   const [globalSearch, setGlobalSearch] = useState("");
@@ -346,7 +348,7 @@ function AppShell({
               <Button
                 key={item.id}
                 className={`nav-button ${view === item.id ? "active" : ""}`}
-                onClick={() => setView(item.id)}
+                onClick={() => (onNavClick ? onNavClick(item.id) : setView(item.id))}
                 title={item.label}
               >
                 <Icon name={item.icon} />
@@ -477,6 +479,7 @@ function FilterBar({
           <option>All decisions</option>
           <option>Allow</option>
           <option>Block</option>
+          <option>Quarantine</option>
           <option>Require approval</option>
           <option>Sandbox</option>
         </Select>
@@ -525,7 +528,7 @@ function EventTable({
         </Button>
       ))}
       {events.length === 0 && (
-        <div className="empty-state">No events match the current filters.</div>
+        <div className="empty-state">No runtime enforcement events recorded.</div>
       )}
     </div>
   );
@@ -541,7 +544,7 @@ function OperationsView({
   alertsList,
   ledgerReport,
 }: {
-  go: (view: View) => void;
+  go: (view: View, eventId?: string | null) => void;
   agents: Agent[];
   runtimeEventsList: RuntimeEvent[];
   alertsList: Alert[];
@@ -570,7 +573,9 @@ function OperationsView({
 
   const activeCount = agents.filter((a) => a.status === "Active").length;
   const quarantinedCount = agents.filter((a) => a.status === "Quarantined").length;
-  const blockedCount = runtimeEventsList.filter((e) => e.decision === "Block").length;
+  const blockedCount = runtimeEventsList.filter(
+    (e) => e.decision === "Block" || e.decision === "Quarantine"
+  ).length;
   const blockRate = runtimeEventsList.length > 0
     ? ((blockedCount / runtimeEventsList.length) * 100).toFixed(2)
     : "0.00";
@@ -628,8 +633,8 @@ function OperationsView({
             <strong>Needs attention</strong>
             <span>
               {alertsList.length > 0
-                ? `${alertsList.length} security alerts detected`
-                : "Active incident telemetry & security containment"}
+                ? `${alertsList.length} security alert${alertsList.length === 1 ? "" : "s"} detected`
+                : "No active security alerts"}
             </span>
           </div>
         </div>
@@ -649,7 +654,7 @@ function OperationsView({
               </div>
               <div className="priority-meta">
                 <span>Contained in PEP</span>
-                <small>{new Date(alert.created_at).toLocaleTimeString()}</small>
+                <small>{alert.created_at ? formatTimeIST(alert.created_at) : "10:31:06 IST"}</small>
               </div>
               <Button variant="primary" onClick={() => go("incident")}>
                 Investigate
@@ -657,21 +662,16 @@ function OperationsView({
             </div>
           ))
         ) : (
-          <div className="priority-row critical-row">
-            <Status value="Critical" />
+          <div className="priority-row" style={{ opacity: 0.9 }}>
+            <Status value="Healthy" />
             <div className="priority-content">
-              <strong>Unauthorized data export attempt</strong>
-              <span>
-                Researcher-01 attempted <code>database.export("customers")</code>
-              </span>
+              <strong>No active security alerts</strong>
+              <span>All autonomous agent actions compliant with active mission contracts</span>
             </div>
             <div className="priority-meta">
-              <span>Contained in 19 ms</span>
-              <small>10:31:06 UTC</small>
+              <span>Zero violations</span>
+              <small>Runtime PEP active</small>
             </div>
-            <Button variant="primary" onClick={() => go("incident")}>
-              Investigate
-            </Button>
           </div>
         )}
       </section>
@@ -725,6 +725,8 @@ function OperationsView({
                 </Button>
               </div>
               <dl>
+                <dt>Timestamp</dt>
+                <dd>{selected.timestamp ? formatFullDateTimeIST(selected.timestamp) : selected.time}</dd>
                 <dt>Decision reason</dt>
                 <dd>{selected.reason}</dd>
                 <dt>Event hash</dt>
@@ -746,6 +748,17 @@ function OperationsView({
               >
                 View ledger evidence
               </Button>
+              {selected.id && (
+                <div style={{ marginTop: 6 }}>
+                  <Button
+                    variant="primary"
+                    className="full-width"
+                    onClick={() => go("replay", selected.id)}
+                  >
+                    Inspect in Replay
+                  </Button>
+                </div>
+              )}
             </section>
           )}
 
@@ -950,29 +963,55 @@ function IncidentView({
   go,
   alertsList,
   runtimeEventsList,
+  onOpenReplay,
 }: {
-  go: (view: View) => void;
+  go: (view: View, eventId?: string | null) => void;
   alertsList: Alert[];
   runtimeEventsList: RuntimeEvent[];
+  onOpenReplay?: (eventId?: string) => void;
 }) {
-  const latestAlert = alertsList[0];
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
+  const currentAlert = alertsList.find(a => a.id === selectedAlertId) || alertsList[0];
   const timeline = runtimeEventsList.slice(0, 6);
 
   return (
     <div className="page">
       <PageHeader
-        eyebrow="Incidents / INC-2026-0042"
-        title={latestAlert?.message || "Unauthorized data export attempt"}
-        description="Researcher-01 deviated from its active mission after consuming untrusted content."
+        eyebrow={`Incidents / ${currentAlert?.id || "INC-2026-0042"}`}
+        title={currentAlert?.message || "Unauthorized data export attempt"}
+        description={currentAlert ? `Security violation detected for agent ${currentAlert.agent_id}.` : "Researcher-01 deviated from its active mission after consuming untrusted content."}
       >
         <Button variant="secondary">
           <Icon name="copy" size={14} />
           Export evidence
         </Button>
-        <Button variant="primary" onClick={() => go("replay")}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (onOpenReplay) {
+              onOpenReplay(currentAlert?.event_id || undefined);
+            } else {
+              go("replay", currentAlert?.event_id);
+            }
+          }}
+        >
           Open replay
         </Button>
       </PageHeader>
+
+      {alertsList.length > 1 && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px", overflowX: "auto", paddingBottom: "4px" }}>
+          {alertsList.map((alt) => (
+            <Button
+              key={alt.id}
+              variant={alt.id === currentAlert?.id ? "primary" : "secondary"}
+              onClick={() => setSelectedAlertId(alt.id)}
+            >
+              {alt.alert_type} ({alt.agent_id})
+            </Button>
+          ))}
+        </div>
+      )}
 
       <div className="incident-layout">
         <div>
@@ -1021,6 +1060,11 @@ function IncidentView({
               <div
                 className={`timeline-row ${index === 0 || item.decision === "Block" ? "alerting" : ""}`}
                 key={item.seq || item.time}
+                style={{ cursor: item.id ? "pointer" : "default" }}
+                onClick={() => {
+                  if (item.id) go("replay", item.id);
+                }}
+                title={item.id ? "Inspect event in Forensic Replay" : undefined}
               >
                 <code>{item.time}</code>
                 <span className="timeline-marker" />
@@ -1137,195 +1181,7 @@ function IncidentView({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 4. REPLAY VIEW
-// ─────────────────────────────────────────────────────────────────────────────
-function ReplayView({
-  replayEventsList,
-}: {
-  replayEventsList: ReplayEvent[];
-}) {
-  const [selected, setSelected] = useState(4);
-  const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState("1×");
-
-  useEffect(() => {
-    if (!playing) return;
-    const timer = window.setInterval(
-      () =>
-        setSelected((value) =>
-          value >= replayEventsList.length - 1 ? 0 : value + 1
-        ),
-      speed === "2×" ? 600 : 1200
-    );
-    return () => window.clearInterval(timer);
-  }, [playing, speed, replayEventsList.length]);
-
-  const item = replayEventsList[selected] || replayEventsList[0];
-
-  return (
-    <div className="page replay-page">
-      <PageHeader
-        eyebrow="Sessions / SESS-001 / Replay"
-        title="Forensic replay"
-        description="Deterministic reconstruction using recorded agent states, policy versions, and tamper-proof hashes."
-      >
-        <Status value="Verified" />
-      </PageHeader>
-      <div className="replay-layout">
-        <section className="replay-events">
-          <div className="section-heading">
-            <div>
-              <strong>Session events</strong>
-              <span>{replayEventsList.length} recorded events</span>
-            </div>
-          </div>
-          {replayEventsList.map((event, index) => (
-            <Button
-              key={`${event.time}-${index}`}
-              className={`replay-row ${index === selected ? "selected" : ""}`}
-              onClick={() => setSelected(index)}
-            >
-              <code>#{18395 + index}</code>
-              <span>
-                <strong>{event.title}</strong>
-                <small>
-                  {event.time} · {event.agent}
-                </small>
-              </span>
-              {index >= 4 && index <= 6 && <span className="event-alert" />}
-            </Button>
-          ))}
-        </section>
-
-        <section className="replay-canvas">
-          <div className="canvas-head">
-            <span>
-              State at <code>{item?.time}</code>
-            </span>
-            <small>
-              Event {selected + 1} of {replayEventsList.length}
-            </small>
-          </div>
-          <div className="agent-flow">
-            <div className="flow-agent">
-              <span>P</span>
-              <strong>Planner-01</strong>
-              <Status value="Active" />
-            </div>
-            <Icon name="chevron" />
-            <div
-              className={`flow-agent ${
-                item?.agent?.includes("Researcher") ? "focused" : ""
-              }`}
-            >
-              <span>R</span>
-              <strong>Researcher-01</strong>
-              <Status value={item?.state || "Active"} />
-            </div>
-            <Icon name="chevron" />
-            <div className="flow-agent">
-              <span>E</span>
-              <strong>Executor-01</strong>
-              <Status value="Active" />
-            </div>
-          </div>
-          <div className="selected-event">
-            <span>Selected event</span>
-            <strong>{item?.title}</strong>
-            <p>{item?.description}</p>
-          </div>
-          <div className="scrubber">
-            <div>
-              {replayEventsList.map((_, index) => (
-                <Button
-                  key={index}
-                  className={`${index <= selected ? "passed" : ""} ${
-                    index === selected ? "current" : ""
-                  }`}
-                  title={`Go to event ${index + 1}`}
-                  onClick={() => setSelected(index)}
-                />
-              ))}
-            </div>
-          </div>
-          <div className="playback">
-            <Button
-              variant="secondary"
-              onClick={() => setSelected(Math.max(0, selected - 1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="primary"
-              className="play-button"
-              onClick={() => setPlaying(!playing)}
-            >
-              <Icon name={playing ? "pause" : "play"} size={15} />
-              {playing ? "Pause" : "Play"}
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() =>
-                setSelected(Math.min(replayEventsList.length - 1, selected + 1))
-              }
-            >
-              Next
-            </Button>
-            <Select value={speed} onChange={setSpeed} label="Playback speed">
-              <option>1×</option>
-              <option>2×</option>
-            </Select>
-          </div>
-        </section>
-
-        <aside className="state-inspector">
-          <div className="section-heading">
-            <div>
-              <strong>State inspector</strong>
-              <span>Before and after event</span>
-            </div>
-          </div>
-          <dl>
-            <dt>Agent</dt>
-            <dd>{item?.agent}</dd>
-            <dt>Agent state</dt>
-            <dd>
-              <Status value={item?.state || "Active"} />
-            </dd>
-            <dt>Trust score</dt>
-            <dd className="state-change">
-              <strong>{item?.trustBefore}</strong>
-              <Icon name="chevron" size={14} />
-              <strong
-                className={
-                  item && item.trustAfter < item.trustBefore ? "critical-text" : ""
-                }
-              >
-                {item?.trustAfter}
-              </strong>
-            </dd>
-            <dt>Plan step</dt>
-            <dd>Step 02 · Research</dd>
-            <dt>Policy version</dt>
-            <dd>
-              <code>{item?.policy}</code>
-            </dd>
-            <dt>Re-evaluation</dt>
-            <dd>
-              <Status value="Verified" /> Matches recorded decision
-            </dd>
-          </dl>
-          <Button variant="secondary" className="full-width">
-            View signed event
-          </Button>
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 5. LEDGER VIEW
+// 4. LEDGER VIEW
 // ─────────────────────────────────────────────────────────────────────────────
 function LedgerView({
   runtimeEventsList,
@@ -1335,8 +1191,8 @@ function LedgerView({
   onVerifyLedger: () => Promise<LedgerReport>;
 }) {
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<RuntimeEvent>(
-    runtimeEventsList[0] || seedRuntimeEvents[0]
+  const [selected, setSelected] = useState<RuntimeEvent | null>(
+    runtimeEventsList[0] || null
   );
   const [verifyStep, setVerifyStep] = useState(-1);
   const [verifyResult, setVerifyResult] = useState<LedgerReport | null>(null);
@@ -1528,10 +1384,12 @@ function AttackLabView({
   agents,
   onSimulate,
   go,
+  onOpenReplay,
 }: {
   agents: Agent[];
   onSimulate: (req: { agent_id: string; scenario: AttackScenarioType }) => Promise<AttackSimulateResponse>;
-  go: (view: View) => void;
+  go: (view: View, eventId?: string | null) => void;
+  onOpenReplay?: (eventId?: string) => void;
 }) {
   const [scenario, setScenario] = useState<AttackScenarioType>("prompt_injection");
   const [selectedAgentId, setSelectedAgentId] = useState(agents[1]?.id || "researcher-01");
@@ -1705,14 +1563,20 @@ function AttackLabView({
                 <Button
                   variant="primary"
                   className="full-width"
-                  onClick={() => go("incident")}
+                  onClick={() => go("incident", result.event_id)}
                 >
                   Investigate in Incidents
                 </Button>
                 <Button
                   variant="secondary"
                   className="full-width"
-                  onClick={() => go("replay")}
+                  onClick={() => {
+                    if (onOpenReplay) {
+                      onOpenReplay(result.event_id || undefined);
+                    } else {
+                      go("replay", result.event_id);
+                    }
+                  }}
                 >
                   Forensic Replay
                 </Button>
@@ -1799,21 +1663,43 @@ export default function App() {
   const [ledgerReport, setLedgerReport] = useState<LedgerReport | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  const [replayEventId, setReplayEventId] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("event_id") || null;
+    }
+    return null;
+  });
+
   // Sync with browser URL / history
   useEffect(() => {
-    const path = window.location.pathname.toLowerCase();
-    if (path.includes("replay")) setView("replay");
-    else if (path.includes("incident") || path.includes("alert")) setView("incident");
-    else if (path.includes("ledger")) setView("ledger");
-    else if (path.includes("agent")) setView("agents");
-    else if (path.includes("attack")) setView("attack_lab");
-    else if (path.includes("ide") || path.includes("mcp")) setView("ide");
-    else if (path.includes("map") || path.includes("graph")) setView("live_map");
+    const syncFromUrl = () => {
+      const path = window.location.pathname.toLowerCase();
+      const params = new URLSearchParams(window.location.search);
+      const eid = params.get("event_id") || params.get("id");
+      if (eid) {
+        setReplayEventId(eid);
+      }
+      if (path.includes("replay")) setView("replay");
+      else if (path.includes("incident") || path.includes("alert")) setView("incident");
+      else if (path.includes("ledger")) setView("ledger");
+      else if (path.includes("agent")) setView("agents");
+      else if (path.includes("attack")) setView("attack_lab");
+      else if (path.includes("ide") || path.includes("mcp")) setView("ide");
+      else if (path.includes("map") || path.includes("graph")) setView("live_map");
+    };
+
+    syncFromUrl();
+    window.addEventListener("popstate", syncFromUrl);
+    return () => window.removeEventListener("popstate", syncFromUrl);
   }, []);
 
-  const handleSetView = useCallback((nextView: View) => {
+  const handleSetView = useCallback((nextView: View, eventId?: string | null) => {
+    if (eventId !== undefined) {
+      setReplayEventId(eventId);
+    }
     setView(nextView);
-    const target =
+    let target =
       nextView === "operations"
         ? "/"
         : nextView === "attack_lab"
@@ -1823,10 +1709,25 @@ export default function App() {
         : nextView === "live_map"
         ? "/map"
         : `/${nextView}`;
-    if (window.location.pathname !== target) {
+    const activeEid = eventId !== undefined ? eventId : replayEventId;
+    if (nextView === "replay" && activeEid) {
+      target = `/replay?event_id=${encodeURIComponent(activeEid)}`;
+    }
+    if (window.location.pathname + window.location.search !== target) {
       window.history.pushState(null, "", target);
     }
-  }, []);
+  }, [replayEventId]);
+
+  const handleOpenReplay = useCallback((eventId?: string | null) => {
+    handleSetView("replay", eventId || null);
+  }, [handleSetView]);
+
+  const handleNavClick = useCallback((nextView: View) => {
+    if (nextView === "replay") {
+      setReplayEventId(null);
+    }
+    handleSetView(nextView, nextView === "replay" ? null : undefined);
+  }, [handleSetView]);
 
   // Poll backend data
   const loadData = useCallback(async () => {
@@ -1834,15 +1735,15 @@ export default function App() {
     try {
       const [hData, aData, eData, alData, lData] = await Promise.all([
         fetchHealth().catch(() => ({ status: "offline" })),
-        fetchAgents().catch(() => []),
-        fetchEvents(100).catch(() => []),
-        fetchAlerts(100).catch(() => []),
+        fetchAgents().catch(() => null),
+        fetchEvents(1000).catch(() => null),
+        fetchAlerts(1000).catch(() => null),
         apiVerifyLedger().catch(() => null),
       ]);
       setHealth(hData as HealthStatus);
-      if (Array.isArray(aData) && aData.length > 0) setBackendAgents(aData);
-      if (Array.isArray(eData) && eData.length > 0) setBackendEvents(eData);
-      if (Array.isArray(alData) && alData.length > 0) setBackendAlerts(alData);
+      if (Array.isArray(aData)) setBackendAgents(aData);
+      if (Array.isArray(eData)) setBackendEvents(eData);
+      if (Array.isArray(alData)) setBackendAlerts(alData);
       if (lData) setLedgerReport(lData);
     } catch {
       // Ignored
@@ -1888,19 +1789,31 @@ export default function App() {
     });
   }, [backendAgents]);
 
-  // Map Backend Events to Figma RuntimeEvent format, merging with seed events
+  // Map Backend Events to Figma RuntimeEvent format
   const mergedRuntimeEvents: RuntimeEvent[] = useMemo(() => {
-    if (backendEvents.length === 0) return seedRuntimeEvents;
-    return backendEvents.map((be) => {
-      const decisionStr = (be.decision?.decision || "").toUpperCase();
+    if (backendEvents.length === 0) return [];
+    const sorted = [...backendEvents].sort((a, b) => (b.seq ?? 0) - (a.seq ?? 0));
+    return sorted.map((be) => {
+      const rawDecision = (
+        be.decision?.status ||
+        be.decision?.decision ||
+        (be.decision?.allowed === true
+          ? "ALLOW"
+          : be.decision?.allowed === false
+            ? "BLOCK"
+            : "")
+      ).toUpperCase();
+
       const decision: Decision =
-        decisionStr === "ALLOW"
+        rawDecision === "ALLOW"
           ? "Allow"
-          : decisionStr === "APPROVAL"
-          ? "Require approval"
-          : decisionStr === "SANDBOX"
-          ? "Sandbox"
-          : "Block";
+          : rawDecision === "QUARANTINE" || rawDecision.includes("QUARANTIN")
+            ? "Quarantine"
+            : rawDecision === "APPROVAL" || rawDecision.includes("APPROV")
+              ? "Require approval"
+              : rawDecision === "SANDBOX"
+                ? "Sandbox"
+                : "Block";
       const riskLevel = (be.decision?.risk_level || "low").toLowerCase();
       const severity =
         riskLevel === "critical"
@@ -1911,8 +1824,10 @@ export default function App() {
           ? "Medium"
           : "Low";
       return {
+        id: be.id,
         seq: be.seq,
-        time: be.timestamp ? be.timestamp.slice(11, 23) : "10:31:00",
+        time: be.timestamp ? formatTimeIST(be.timestamp) : "10:31:00 IST",
+        timestamp: be.timestamp,
         agent: be.agent_id,
         type: be.event_type.replace(/_/g, " "),
         resource: be.action || "tool.call",
@@ -1948,6 +1863,7 @@ export default function App() {
       alertCount={backendAlerts.length}
       isRefreshing={isRefreshing}
       onRefresh={loadData}
+      onNavClick={handleNavClick}
     >
       {view === "operations" && (
         <RomerDashboard
@@ -1970,10 +1886,20 @@ export default function App() {
           go={handleSetView}
           alertsList={backendAlerts}
           runtimeEventsList={mergedRuntimeEvents}
+          onOpenReplay={handleOpenReplay}
         />
       )}
       {view === "replay" && (
-        <ReplayView replayEventsList={seedReplayEvents} />
+        <div className="page" style={{ maxWidth: "1640px", padding: "24px 32px 56px" }}>
+          <AttackReplay
+            events={backendEvents}
+            agents={backendAgents}
+            isLoading={isRefreshing}
+            onRefresh={loadData}
+            initialEventId={replayEventId}
+            onNavigateToAlerts={() => handleSetView("incident")}
+          />
+        </div>
       )}
       {view === "ledger" && (
         <LedgerView
@@ -1986,6 +1912,7 @@ export default function App() {
           agents={mergedAgents}
           onSimulate={apiSimulateAttack}
           go={handleSetView}
+          onOpenReplay={handleOpenReplay}
         />
       )}
       {view === "ide" && (

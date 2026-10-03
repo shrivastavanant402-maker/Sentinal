@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Alert, Agent, EventLog, AnomalyDetectResponse } from '../types';
+import { formatTimeIST } from '../utils/time';
 import { AlertFilters } from '../components/alerts/AlertFilters';
 import { AlertList } from '../components/alerts/AlertList';
 import { AlertDetailModal } from '../components/alerts/AlertDetailModal';
@@ -316,7 +317,7 @@ export const Alerts: React.FC<AlertsPageProps> = ({
                       </div>
                       <div className="flex items-center gap-2 text-[11px] text-muted font-mono">
                         <Clock size={12} />
-                        <span>{new Date(anomaly.timestamp).toLocaleTimeString()}</span>
+                        <span>{formatTimeIST(anomaly.timestamp)}</span>
                         {anomaly.alert_id && (
                           <button
                             onClick={() => {

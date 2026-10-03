@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Agent } from '../../types';
+import { formatTimeIST } from '../../utils/time';
 import { StatusBadge } from '../common/StatusBadge';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -36,12 +37,7 @@ export const AgentStatus: React.FC<AgentStatusProps> = ({
 
   const formatTime = (isoString?: string) => {
     if (!isoString) return 'Never';
-    try {
-      const date = new Date(isoString);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch {
-      return isoString;
-    }
+    return formatTimeIST(isoString);
   };
 
   return (

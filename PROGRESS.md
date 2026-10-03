@@ -90,7 +90,20 @@
     * MCP now exposes both `aegismesh_enforce` and `aegismesh_run_mission`.
     * VS Code integration is NOT completed yet.
     * Arbitrary IDE terminal/file interception is NOT completed.
-    * Package/extension integration is NOT completed.
+- [Developer 2] Completed MCP Step 3: Real VS Code + MCP Integration Validation (2026-10-02)
+  - Verified stdio MCP server independently: confirmed server starts, stdout remains clean JSON-RPC protocol framing, stderr captures diagnostics, and both `aegismesh_enforce` and `aegismesh_run_mission` are discoverable.
+  - Inspected VS Code environment: standard VS Code installations require an MCP host client (e.g. Roo Code / Cline / Claude Desktop / Antigravity IDE) to connect to stdio MCP servers; documented exact configuration:
+    command: `python`
+    args: `["scripts/mcp_server.py"]`
+    env: `{"AEGISMESH_URL": "http://127.0.0.1:8000"}`
+  - Verified real MCP stdio client execution end-to-end against live AegisMesh backend on port 8000:
+    * Executed `aegismesh_run_mission` with goal: "Research the topic of supply chain security and generate an executive briefing."
+    * Produced real `mission_id` (`mission-ba25639a`), `session_id` (`session-b5a6f5eb`), `status` (`COMPLETED`), real Planner delegation (`planner-01`), Researcher search (`researcher-01`), and Executor briefing generation (`executor-01`).
+    * Captured 3 unique ledger event IDs (`588ad259-f4cc-4188-b111-4226da0a29da`, `d3608ae0-0700-43f2-93da-e8fbf86be778`, `d3f0a093-f9ee-447b-85a2-03b45740a972`).
+    * Executed `aegismesh_enforce` for permitted action (`researcher-01` + `web.search` -> `ALLOW`, event `685d876a-4487-4223-920e-61b68ad86996`).
+    * Executed `aegismesh_enforce` for prohibited action (`researcher-01` + `shell.exec` -> `BLOCK` with `MISSION_DRIFT`, risk `critical`, event `0104b03b-4b9a-4b4e-a3f0-3be4ccca3b09`).
+  - Verified live backend telemetry and cryptographic ledger proof: all event IDs verified present in `/events` and `/ledger/verify` confirmed hash-chain integrity (`ok: True`, `chain_valid: True`).
+  - Full test regression: 204/204 backend tests passing, 16/16 VS Code extension tests passing, frontend typecheck and build passing with 0 errors.
 
 - Completed Live Map: Visual Multi-Agent Network Graph (2026-10-03)
   - Created `backend/app/api/graph.py` with `GET /graph/topology` endpoint aggregating agents, trust scores, taint labels, recent events, inter-agent delegation/communication flows, taint propagation lineage, and PEP enforcement edges into a single graph topology payload.

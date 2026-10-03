@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert } from '../../types';
+import { formatTimeIST } from '../../utils/time';
 import { SeverityBadge } from '../common/SeverityBadge';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -21,13 +22,7 @@ export const AlertPanel: React.FC<AlertPanelProps> = ({
   const recentAlerts = alerts.slice(0, 5);
 
   const formatTimestamp = (iso?: string) => {
-    if (!iso) return '—';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    } catch {
-      return iso;
-    }
+    return formatTimeIST(iso);
   };
 
   return (

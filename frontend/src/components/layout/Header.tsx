@@ -1,6 +1,7 @@
 import React from 'react';
 import { Shield, RefreshCw, Activity, AlertTriangle, Layers, Radio, FlaskConical, History } from 'lucide-react';
 import { HealthStatus } from '../../types';
+import { formatTimeIST } from '../../utils/time';
 
 interface HeaderProps {
   currentTab: 'dashboard' | 'alerts' | 'attack_lab' | 'attack_replay';
@@ -108,11 +109,11 @@ export const Header: React.FC<HeaderProps> = ({
           onClick={onRefresh}
           disabled={isRefreshing}
           className="btn-refresh"
-          title={`Click to refresh data. Last refreshed: ${lastUpdated ? lastUpdated.toLocaleTimeString() : 'never'}`}
+          title={`Click to refresh data. Last refreshed: ${lastUpdated ? formatTimeIST(lastUpdated) : 'never'}`}
         >
           <RefreshCw size={15} className={isRefreshing ? 'animate-spin text-accent' : 'text-secondary'} />
           <span className="text-xs text-muted font-mono hidden md:inline">
-            {isRefreshing ? 'SYNCING' : lastUpdated ? lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'REFRESH'}
+            {isRefreshing ? 'SYNCING' : lastUpdated ? formatTimeIST(lastUpdated) : 'REFRESH'}
           </span>
         </button>
       </div>

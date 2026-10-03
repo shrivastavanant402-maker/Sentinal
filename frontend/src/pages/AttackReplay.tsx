@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { EventLog, Agent, AttackReplayResponse } from '../types';
+import { formatTimeIST, formatFullDateTimeIST } from '../utils/time';
 import { fetchAttackReplay } from '../services/api';
 import { DecisionBadge } from '../components/common/DecisionBadge';
 import { SeverityBadge } from '../components/common/SeverityBadge';
@@ -182,17 +183,17 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
     }
   };
 
-  // Auto-select preferred security/enforcement event on initial load, or when initialEventId changes
+  // Dynamic replay selection: load initialEventId if specified, or reset to truthful empty selection state
   useEffect(() => {
     if (initialEventId) {
       loadReplay(initialEventId);
-    } else if (!selectedEventId && events.length > 0) {
-      const preferred = events.find(e => e.event_type === 'enforcement') || events[0];
-      if (preferred) {
-        loadReplay(preferred.id);
-      }
+    } else {
+      setSelectedEventId(null);
+      setReplayData(null);
+      setReplayError(null);
     }
-  }, [events, initialEventId]);
+  }, [initialEventId]);
+
 
   return (
     <div className="attack-replay-page-flow">
@@ -307,7 +308,9 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
           <div className="event-list-container flex flex-col gap-2 max-h-[680px] overflow-y-auto pr-1">
             {filteredEvents.length === 0 ? (
               <div className="p-6 text-center text-xs text-muted font-mono">
-                No events match the selected criteria.
+                {events.length === 0
+                  ? 'No recorded events found in ledger stream.'
+                  : 'No events match the selected criteria.'}
               </div>
             ) : (
               filteredEvents.map(event => {
@@ -355,7 +358,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     </div>
 
                     <div className="mt-1 flex items-center justify-between text-[11px] text-muted font-mono">
-                      <span>{new Date(event.timestamp).toLocaleTimeString()}</span>
+                      <span>{formatTimeIST(event.timestamp)}</span>
                       <span className="truncate max-w-[120px]">{event.id.slice(0, 8)}...</span>
                     </div>
                   </div>
@@ -386,7 +389,15 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     ? 'bg-emerald/15 text-emerald border border-emerald/30'
                     : 'bg-rose/15 text-rose border border-rose/30'
                 }`}>
-                  <CheckCircle2 size={12} /> VERIFIED
+                  {replayData.ledger.chain_valid ? (
+                    <>
+                      <CheckCircle2 size={12} /> VERIFIED
+                    </>
+                  ) : (
+                    <>
+                      <XCircle size={12} /> INVALID
+                    </>
+                  )}
                 </span>
               </div>
             )}
@@ -396,12 +407,12 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
           <div className="timeline-body min-h-[500px]">
             {isLoadingReplay ? (
               <div className="p-16 flex items-center justify-center">
-                <LoadingSpinner label="Aggregating cryptographic evidence and replay telemetry..." />
+                <LoadingSpinner label="Loading forensic evidence..." />
               </div>
             ) : replayError ? (
               <div className="p-8 text-center flex flex-col items-center gap-3">
                 <AlertTriangle size={32} className="text-rose" />
-                <h4 className="text-sm font-semibold text-rose">Replay Evidence Error</h4>
+                <h4 className="text-sm font-semibold text-rose">Unable to load forensic evidence.</h4>
                 <p className="text-xs text-secondary max-w-md">{replayError}</p>
                 {selectedEventId && (
                   <button
@@ -415,7 +426,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
             ) : !replayData ? (
               <EmptyState
                 icon={History}
-                title="No Event Selected for Replay"
+                title="No forensic evidence available for this event."
                 description="Select any recorded event from the left audit stream to visualize its end-to-end evidence timeline across all 6 runtime integrity stages."
               />
             ) : (
@@ -435,7 +446,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                       </div>
                       <span className="font-mono text-xs text-muted flex items-center gap-1">
                         <Clock size={12} />
-                        {new Date(replayData.timestamp).toLocaleString()}
+                        {formatFullDateTimeIST(replayData.timestamp)}
                       </span>
                     </div>
 
@@ -445,33 +456,37 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <span className="text-white font-semibold">
                           {(() => {
                             const found = agents.find(a => a.id === replayData.agent_id);
-                            return found ? `${found.name} (${replayData.agent_id})` : replayData.agent_id;
+                            return found ? `${found.name} (${replayData.agent_id})` : (replayData.agent_id || 'Not available');
                           })()}
                         </span>
                       </div>
                       <div className="p-2 rounded bg-black/40 border border-white/5">
                         <span className="text-muted block text-[11px]">Invoked Action / Tool:</span>
-                        <span className="text-cyan font-semibold">{replayData.action}</span>
+                        <span className="text-cyan font-semibold">{replayData.action || 'Not available'}</span>
                       </div>
                       <div className="p-2 rounded bg-black/40 border border-white/5">
                         <span className="text-muted block text-[11px]">Event Type:</span>
-                        <span className="text-white">{replayData.event_type}</span>
+                        <span className="text-white">{replayData.event_type || 'Not available'}</span>
                       </div>
                     </div>
 
                     {/* Payload inspection */}
-                    {replayData.payload && Object.keys(replayData.payload).length > 0 && (
-                      <div className="mt-3">
-                        <span className="text-muted text-[11px] font-mono block mb-1">
-                          Action Payload & Mission Parameters:
-                        </span>
+                    <div className="mt-3">
+                      <span className="text-muted text-[11px] font-mono block mb-1">
+                        Action Payload & Mission Parameters:
+                      </span>
+                      {replayData.payload && Object.keys(replayData.payload).length > 0 ? (
                         <div className="p-2.5 rounded bg-black/50 border border-white/5 max-h-36 overflow-y-auto">
                           <pre className="text-xs text-secondary font-mono leading-relaxed whitespace-pre-wrap">
                             {JSON.stringify(replayData.payload, null, 2)}
                           </pre>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-2 rounded bg-black/30 border border-white/5 text-[11px] text-muted font-mono">
+                          No payload recorded
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -503,18 +518,22 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     </div>
 
                     {/* Diagnostic details if present */}
-                    {replayData.details && Object.keys(replayData.details).length > 0 && (
-                      <div className="mt-3">
-                        <span className="text-muted text-[11px] font-mono block mb-1">
-                          Diagnostic Context (Taint Path / Contract Drift / Anomaly Telemetry):
-                        </span>
+                    <div className="mt-3">
+                      <span className="text-muted text-[11px] font-mono block mb-1">
+                        Diagnostic Context (Taint Path / Contract Drift / Anomaly Telemetry):
+                      </span>
+                      {replayData.details && Object.keys(replayData.details).length > 0 ? (
                         <div className="p-2.5 rounded bg-black/50 border border-white/5 max-h-36 overflow-y-auto">
                           <pre className="text-xs text-secondary font-mono leading-relaxed whitespace-pre-wrap">
                             {JSON.stringify(replayData.details, null, 2)}
                           </pre>
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <div className="p-2 rounded bg-black/30 border border-white/5 text-[11px] text-muted font-mono">
+                          No diagnostic details recorded
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -550,14 +569,16 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                       </div>
                       <div className="p-2 rounded bg-black/40 border border-white/5">
                         <span className="text-muted block text-[11px]">Action Allowed:</span>
-                        {replayData.allowed ? (
+                        {replayData.allowed === true ? (
                           <span className="text-emerald font-semibold flex items-center gap-1">
                             <CheckCircle2 size={12} /> Permitted
                           </span>
-                        ) : (
+                        ) : replayData.allowed === false ? (
                           <span className="text-rose font-semibold flex items-center gap-1">
                             <XCircle size={12} /> Denied / Intercepted
                           </span>
+                        ) : (
+                          <span className="text-muted font-semibold">Not recorded</span>
                         )}
                       </div>
                     </div>
@@ -585,11 +606,15 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                     <div className="mt-3 p-3 rounded bg-black/40 border border-white/5 text-xs font-mono">
                       <span className="text-muted block text-[11px]">Enforcement Outcome:</span>
                       <span className="text-white font-semibold text-sm">
-                        {replayData.enforcement_outcome}
+                        {replayData.enforcement_outcome || 'Recorded in Audit Ledger'}
                       </span>
-                      {replayData.resulting_agent_status && (
+                      {replayData.resulting_agent_status ? (
                         <span className="text-secondary block mt-1">
                           Agent '{replayData.agent_id}' status in registry: <strong className="text-cyan">{replayData.resulting_agent_status}</strong>
+                        </span>
+                      ) : (
+                        <span className="text-muted block mt-1">
+                          Agent status: No change recorded
                         </span>
                       )}
                     </div>
@@ -629,7 +654,11 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         </p>
                         <div className="text-[11px] text-muted font-mono pt-1 border-t border-white/10 flex items-center justify-between">
                           <span>Target Agent: {replayData.alert.agent_id}</span>
+                          <span>Timestamp: {formatFullDateTimeIST(replayData.alert.created_at)}</span>
+                        </div>
+                        <div className="text-[11px] text-muted font-mono flex items-center justify-between">
                           <span>Linked Event ID: {replayData.alert.event_id}</span>
+                          <span>Severity: <span className="uppercase text-amber">{replayData.alert.severity}</span></span>
                         </div>
                       </div>
                     ) : (
@@ -655,7 +684,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <h4 className="font-semibold text-sm text-white">Stage 6: Tamper-Proof Cryptographic Ledger</h4>
                       </div>
                       <span className="px-2 py-0.5 rounded text-[11px] font-mono bg-emerald/20 text-emerald font-semibold border border-emerald/40">
-                        LEDGER BLOCK #{replayData.ledger.seq}
+                        LEDGER BLOCK #{replayData.ledger?.seq ?? 'N/A'}
                       </span>
                     </div>
 
@@ -663,7 +692,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                       <div className="p-2.5 rounded bg-black/60 border border-white/5 flex flex-col gap-1">
                         <div className="flex items-center justify-between">
                           <span className="text-muted text-[11px]">Ledger Event UUID:</span>
-                          <span className="text-white select-all break-all">{replayData.event_id}</span>
+                          <span className="text-white select-all break-all">{replayData.event_id || 'Not available'}</span>
                         </div>
                       </div>
 
@@ -671,7 +700,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-muted text-[11px]">Previous Block Hash:</span>
                           <span className="text-cyan font-mono text-[11px] select-all break-all">
-                            {replayData.ledger.previous_hash}
+                            {replayData.ledger?.previous_hash || 'None (Genesis)'}
                           </span>
                         </div>
                       </div>
@@ -680,7 +709,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-muted text-[11px]">Content Payload Hash:</span>
                           <span className="text-secondary font-mono text-[11px] select-all break-all">
-                            {replayData.ledger.content_hash}
+                            {replayData.ledger?.content_hash || 'Not available'}
                           </span>
                         </div>
                       </div>
@@ -689,7 +718,7 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
                         <div className="flex items-center justify-between">
                           <span className="text-muted text-[11px]">Merkle / Event Block Hash:</span>
                           <span className="text-emerald font-mono text-[11px] font-semibold select-all break-all">
-                            {replayData.ledger.event_hash}
+                            {replayData.ledger?.event_hash || 'Not available'}
                           </span>
                         </div>
                       </div>
@@ -697,7 +726,15 @@ export const AttackReplay: React.FC<AttackReplayProps> = ({
 
                     <div className="mt-3 p-2 rounded bg-emerald/10 border border-emerald/20 flex items-center justify-between text-xs font-mono">
                       <span className="flex items-center gap-1.5 text-emerald font-semibold">
-                        <CheckCircle2 size={14} /> Cryptographic SHA256 Chaining Verified
+                        {replayData.ledger?.chain_valid ? (
+                          <>
+                            <CheckCircle2 size={14} /> Cryptographic SHA256 Chaining Verified
+                          </>
+                        ) : (
+                          <>
+                            <XCircle size={14} className="text-rose" /> Hash Chain Verification Failed
+                          </>
+                        )}
                       </span>
                       <span className="text-muted text-[11px]">Immutable Storage Record</span>
                     </div>

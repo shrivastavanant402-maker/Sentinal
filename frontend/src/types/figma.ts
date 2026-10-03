@@ -1,6 +1,6 @@
 export type View = "operations" | "agents" | "incident" | "replay" | "ledger" | "attack_lab" | "ide" | "live_map";
 export type FigmaSeverity = "Critical" | "High" | "Medium" | "Low";
-export type FigmaDecision = "Allow" | "Block" | "Require approval" | "Sandbox";
+export type FigmaDecision = "Allow" | "Block" | "Require approval" | "Sandbox" | "Quarantine";
 export type FigmaAgentStatus = "Active" | "Degraded" | "Halted" | "Quarantined" | "Offline";
 
 export interface FigmaAgent {
@@ -20,8 +20,10 @@ export interface FigmaAgent {
 }
 
 export interface RuntimeEvent {
+  id?: string;
   seq: number;
   time: string;
+  timestamp?: string;
   agent: string;
   type: string;
   resource: string;

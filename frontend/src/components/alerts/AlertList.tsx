@@ -1,5 +1,6 @@
 import React from 'react';
 import { Alert } from '../../types';
+import { formatFullDateTimeIST } from '../../utils/time';
 import { SeverityBadge } from '../common/SeverityBadge';
 import { EmptyState } from '../common/EmptyState';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -19,19 +20,7 @@ export const AlertList: React.FC<AlertListProps> = ({
   onRefresh,
 }) => {
   const formatTimestamp = (iso?: string) => {
-    if (!iso) return '—';
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString([], {
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      });
-    } catch {
-      return iso;
-    }
+    return formatFullDateTimeIST(iso);
   };
 
   if (isLoading && alerts.length === 0) {
